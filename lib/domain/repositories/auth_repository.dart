@@ -7,7 +7,7 @@ import '../entities/person.dart';
 abstract class AuthRepository {
   /// Login with email and password
   Future<Either<Failure, AuthResult>> login({
-    required String email,
+    required String identifier,
     required String password,
   });
 

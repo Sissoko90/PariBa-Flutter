@@ -25,14 +25,14 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   final _graceDaysController = TextEditingController();
   final _latePenaltyController = TextEditingController();
 
-  String _selectedFrequency = 'MONTHLY';
+  String _selectedFrequency = 'MENSUEL';
   String _selectedRotationMode = 'SEQUENTIAL';
   DateTime _selectedStartDate = DateTime.now().add(const Duration(days: 1));
 
   final List<Map<String, String>> _frequencies = [
-    {'value': 'WEEKLY', 'label': 'Hebdomadaire'},
-    {'value': 'BIWEEKLY', 'label': 'Bi-hebdomadaire'},
-    {'value': 'MONTHLY', 'label': 'Mensuel'},
+    {'value': 'HEBDOMADAIRE', 'label': 'Hebdomadaire'},
+    {'value': 'BIHEBDOMADAIRE', 'label': 'Bi-hebdomadaire'},
+    {'value': 'MENSUEL', 'label': 'Mensuel'},
     {'value': 'QUARTERLY', 'label': 'Trimestriel'},
   ];
 
@@ -56,24 +56,24 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   void _handleCreateGroup() {
     if (_formKey.currentState!.validate()) {
       context.read<GroupBloc>().add(
-            CreateGroupEvent(
-              nom: _nomController.text.trim(),
-              description: _descriptionController.text.trim().isEmpty
-                  ? null
-                  : _descriptionController.text.trim(),
-              montant: double.parse(_montantController.text),
-              frequency: _selectedFrequency,
-              rotationMode: _selectedRotationMode,
-              totalTours: int.parse(_totalToursController.text),
-              startDate: _selectedStartDate.toIso8601String().split('T')[0],
-              graceDays: _graceDaysController.text.isEmpty
-                  ? null
-                  : int.parse(_graceDaysController.text),
-              latePenaltyAmount: _latePenaltyController.text.isEmpty
-                  ? null
-                  : double.parse(_latePenaltyController.text),
-            ),
-          );
+        CreateGroupEvent(
+          nom: _nomController.text.trim(),
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+          montant: double.parse(_montantController.text),
+          frequency: _selectedFrequency,
+          rotationMode: _selectedRotationMode,
+          totalTours: int.parse(_totalToursController.text),
+          startDate: _selectedStartDate.toIso8601String().split('T')[0],
+          graceDays: _graceDaysController.text.isEmpty
+              ? null
+              : int.parse(_graceDaysController.text),
+          latePenaltyAmount: _latePenaltyController.text.isEmpty
+              ? null
+              : double.parse(_latePenaltyController.text),
+        ),
+      );
     }
   }
 
@@ -94,10 +94,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Créer un Groupe'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Créer un Groupe'), elevation: 0),
       body: BlocConsumer<GroupBloc, GroupState>(
         listener: (context, state) {
           if (state is GroupError) {
@@ -265,10 +262,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                   // Section Pénalités (optionnel)
                   const Text(
                     'Pénalités (optionnel)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
 
                   const SizedBox(height: 12),
