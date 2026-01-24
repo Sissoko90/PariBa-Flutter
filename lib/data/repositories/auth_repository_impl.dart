@@ -20,12 +20,12 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, AuthResult>> login({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
     try {
-      final result = await remoteDataSource.login(email, password);
-      
+      final result = await remoteDataSource.login(identifier, password);
+
       final person = _personModelToEntity(
         PersonModel.fromJson(result['person']),
       );
@@ -127,15 +127,17 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, String>> refreshAccessToken(String refreshToken) async {
+  Future<Either<Failure, String>> refreshAccessToken(
+    String refreshToken,
+  ) async {
     try {
       final tokens = await remoteDataSource.refreshToken(refreshToken);
       final newAccessToken = tokens['accessToken'] as String;
       final newRefreshToken = tokens['refreshToken'] as String;
-      
+
       await tokenManager.saveAccessToken(newAccessToken);
       await tokenManager.saveRefreshToken(newRefreshToken);
-      
+
       return Right(newAccessToken);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

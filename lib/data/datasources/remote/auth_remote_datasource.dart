@@ -5,7 +5,7 @@ import '../../models/person_model.dart';
 
 /// Auth Remote DataSource
 abstract class AuthRemoteDataSource {
-  Future<Map<String, dynamic>> login(String phone, String password);
+  Future<Map<String, dynamic>> login(String identifier, String password);
   Future<Map<String, dynamic>> register(Map<String, dynamic> data);
   Future<void> logout(String refreshToken);
   Future<PersonModel> getCurrentUser();
@@ -21,14 +21,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   AuthRemoteDataSourceImpl(this.dioClient);
 
   @override
-  Future<Map<String, dynamic>> login(String phone, String password) async {
+  Future<Map<String, dynamic>> login(String identifier, String password) async {
     try {
+      final isEmail = identifier.contains('@');
       final response = await dioClient.post(
         ApiConstants.login,
-        data: {
-          'username': phone, // Le backend accepte phone comme username
-          'password': password,
-        },
+        data: {'username': identifier, 'password': password},
       );
 
       // Le backend retourne: {success, message, data: {token, refreshToken, type, person}}
@@ -99,7 +97,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<PersonModel> getCurrentUser() async {
     try {
       final response = await dioClient.get(ApiConstants.myProfile);
-      
+
       if (response.data['success'] == true) {
         return PersonModel.fromJson(response.data['data']);
       } else {
@@ -135,10 +133,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> forgotPassword(String phone) async {
     try {
-      await dioClient.post(
-        ApiConstants.forgotPassword,
-        data: {'phone': phone},
-      );
+      await dioClient.post(ApiConstants.forgotPassword, data: {'phone': phone});
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         throw Exception('Aucun compte associé à ce numéro');
@@ -171,17 +166,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> changePassword(
-    String oldPassword,
-    String newPassword,
-  ) async {
+  Future<void> changePassword(String oldPassword, String newPassword) async {
     try {
       await dioClient.post(
         ApiConstants.changePassword,
-        data: {
-          'oldPassword': oldPassword,
-          'newPassword': newPassword,
-        },
+        data: {'oldPassword': oldPassword, 'newPassword': newPassword},
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {

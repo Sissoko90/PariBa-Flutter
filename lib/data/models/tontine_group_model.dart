@@ -10,7 +10,7 @@ class TontineGroupModel {
   final String nom;
   final String? description;
   final double montant;
-  final String frequency; // WEEKLY, BIWEEKLY, MONTHLY
+  final String frequency; // HEBDOMADAIRE, BIHEBDOMADAIRE, MENSUEL
   final String rotationMode; // FIXED_ORDER, SHUFFLE, RANDOM, CUSTOM
   final int totalTours;
   final String startDate;
@@ -45,7 +45,7 @@ class TontineGroupModel {
     } else {
       creatorId = '';
     }
-    
+
     return TontineGroupModel(
       id: json['id'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
