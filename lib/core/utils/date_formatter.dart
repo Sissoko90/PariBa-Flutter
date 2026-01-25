@@ -99,4 +99,7 @@ class DateFormatter {
       return formatDateTime(date);
     }
   }
+
+  /// Alias for getRelativeTime
+  static String formatRelative(DateTime date) => getRelativeTime(date);
 }

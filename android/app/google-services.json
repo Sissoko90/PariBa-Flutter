@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "372625413773",
+    "project_id": "pariba-e71df",
+    "storage_bucket": "pariba-e71df.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372625413773:android:5f7e6ee1a1426f561134c4",
+        "android_client_info": {
+          "package_name": "com.example.pariba"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYdkggzCpbfQ2pIdgN6MI9FF58lQg5WJw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

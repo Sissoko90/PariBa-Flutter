@@ -4,16 +4,47 @@ import '../support/faq_page.dart';
 import '../support/contact_support_page.dart';
 import '../support/user_guide_page.dart';
 import '../support/report_issue_page.dart';
+import '../../../data/datasources/remote/support_remote_datasource.dart';
+import '../../../data/models/support_contact_model.dart';
+import '../../../di/injection.dart' as di;
 
-class HelpSupportPage extends StatelessWidget {
+class HelpSupportPage extends StatefulWidget {
   const HelpSupportPage({super.key});
+
+  @override
+  State<HelpSupportPage> createState() => _HelpSupportPageState();
+}
+
+class _HelpSupportPageState extends State<HelpSupportPage> {
+  late final SupportRemoteDataSource _dataSource;
+  SupportContactModel? _contactInfo;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataSource = SupportRemoteDataSourceImpl(di.sl());
+    _loadContactInfo();
+  }
+
+  Future<void> _loadContactInfo() async {
+    try {
+      final contact = await _dataSource.getSupportContact();
+      setState(() {
+        _contactInfo = contact;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Aide & Support'),
-      ),
+      appBar: AppBar(title: const Text('Aide & Support')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -32,7 +63,9 @@ class HelpSupportPage extends StatelessWidget {
             Icons.email,
             () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ContactSupportPage()),
+              MaterialPageRoute(
+                builder: (context) => const ContactSupportPage(),
+              ),
             ),
           ),
           _buildHelpCard(
@@ -54,35 +87,57 @@ class HelpSupportPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Contactez-nous',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.email, color: AppColors.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _contactInfo?.email ?? 'support@pariba.com',
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(Icons.email, color: AppColors.primary),
-                      SizedBox(width: 12),
-                      Text('support@pariba.com'),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.phone, color: AppColors.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _contactInfo?.phone ?? '+223 76 71 41 42',
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_contactInfo?.supportHours != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(_contactInfo!.supportHours!)),
+                        ],
+                      ),
                     ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.phone, color: AppColors.primary),
-                      SizedBox(width: 12),
-                      Text('+223 76 71 41 42'),
-                    ],
-                  ),
+                  ],
                 ],
               ),
             ),

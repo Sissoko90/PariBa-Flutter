@@ -64,6 +64,7 @@ class EnhancedProfilePage extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 60),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             // Photo de profil avec bordure
@@ -93,13 +94,14 @@ class EnhancedProfilePage extends StatelessWidget {
                                           width: 100,
                                           height: 100,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return const Icon(
-                                              Icons.person,
-                                              size: 50,
-                                              color: AppColors.primary,
-                                            );
-                                          },
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                return const Icon(
+                                                  Icons.person,
+                                                  size: 50,
+                                                  color: AppColors.primary,
+                                                );
+                                              },
                                         ),
                                       )
                                     : const Icon(
@@ -187,134 +189,118 @@ class EnhancedProfilePage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // Informations personnelles
-                    _buildSection(
-                      'Informations personnelles',
-                      Icons.person,
-                      [
-                        _buildInfoTile(
-                          Icons.badge_outlined,
-                          'Nom complet',
-                          person.fullName,
-                        ),
-                        const Divider(height: 1),
-                        _buildInfoTile(
-                          Icons.phone_outlined,
-                          'Téléphone',
-                          person.phone,
-                        ),
-                        const Divider(height: 1),
-                        _buildInfoTile(
-                          Icons.email_outlined,
-                          'Email',
-                          person.email,
-                        ),
-                      ],
-                    ),
+                    _buildSection('Informations personnelles', Icons.person, [
+                      _buildInfoTile(
+                        Icons.badge_outlined,
+                        'Nom complet',
+                        person.fullName,
+                      ),
+                      const Divider(height: 1),
+                      _buildInfoTile(
+                        Icons.phone_outlined,
+                        'Téléphone',
+                        person.phone,
+                      ),
+                      const Divider(height: 1),
+                      _buildInfoTile(
+                        Icons.email_outlined,
+                        'Email',
+                        person.email,
+                      ),
+                    ]),
 
                     const SizedBox(height: 16),
 
                     // Compte & Sécurité
-                    _buildSection(
-                      'Compte & Sécurité',
-                      Icons.security,
-                      [
-                        _buildActionTile(
+                    _buildSection('Compte & Sécurité', Icons.security, [
+                      _buildActionTile(
+                        context,
+                        Icons.edit_outlined,
+                        'Modifier le profil',
+                        'Mettre à jour vos informations',
+                        AppColors.primary,
+                        () => Navigator.push(
                           context,
-                          Icons.edit_outlined,
-                          'Modifier le profil',
-                          'Mettre à jour vos informations',
-                          AppColors.primary,
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const EditProfilePage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const EditProfilePage(),
                           ),
                         ),
-                        const Divider(height: 1),
-                        _buildActionTile(
+                      ),
+                      const Divider(height: 1),
+                      _buildActionTile(
+                        context,
+                        Icons.lock_outlined,
+                        'Changer le mot de passe',
+                        'Sécurisez votre compte',
+                        AppColors.secondary,
+                        () => Navigator.push(
                           context,
-                          Icons.lock_outlined,
-                          'Changer le mot de passe',
-                          'Sécurisez votre compte',
-                          AppColors.secondary,
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ChangePasswordPage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const ChangePasswordPage(),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ]),
 
                     const SizedBox(height: 16),
 
                     // Préférences
-                    _buildSection(
-                      'Préférences',
-                      Icons.tune,
-                      [
-                        _buildActionTile(
+                    _buildSection('Préférences', Icons.tune, [
+                      _buildActionTile(
+                        context,
+                        Icons.settings_outlined,
+                        'Paramètres',
+                        'Personnalisez votre expérience',
+                        AppColors.info,
+                        () => Navigator.push(
                           context,
-                          Icons.settings_outlined,
-                          'Paramètres',
-                          'Personnalisez votre expérience',
-                          AppColors.info,
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SettingsPage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsPage(),
                           ),
                         ),
-                        const Divider(height: 1),
-                        _buildActionTile(
-                          context,
-                          Icons.notifications_outlined,
-                          'Notifications',
-                          'Gérer vos alertes',
-                          AppColors.warning,
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('En développement')),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      ),
+                      const Divider(height: 1),
+                      _buildActionTile(
+                        context,
+                        Icons.notifications_outlined,
+                        'Notifications',
+                        'Gérer vos alertes',
+                        AppColors.warning,
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('En développement')),
+                          );
+                        },
+                      ),
+                    ]),
 
                     const SizedBox(height: 16),
 
                     // Support
-                    _buildSection(
-                      'Support',
-                      Icons.help_center,
-                      [
-                        _buildActionTile(
+                    _buildSection('Support', Icons.help_center, [
+                      _buildActionTile(
+                        context,
+                        Icons.help_outline,
+                        'Aide & Support',
+                        'Besoin d\'assistance ?',
+                        AppColors.success,
+                        () => Navigator.push(
                           context,
-                          Icons.help_outline,
-                          'Aide & Support',
-                          'Besoin d\'assistance ?',
-                          AppColors.success,
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const HelpSupportPage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const HelpSupportPage(),
                           ),
                         ),
-                        const Divider(height: 1),
-                        _buildActionTile(
-                          context,
-                          Icons.info_outline,
-                          'À propos',
-                          'Version et informations',
-                          AppColors.info,
-                          () => _showAboutDialog(context),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const Divider(height: 1),
+                      _buildActionTile(
+                        context,
+                        Icons.info_outline,
+                        'À propos',
+                        'Version et informations',
+                        AppColors.info,
+                        () => _showAboutDialog(context),
+                      ),
+                    ]),
 
                     const SizedBox(height: 24),
 
@@ -397,38 +383,48 @@ class EnhancedProfilePage extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.2),
-        ),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Flexible(
-            child: _buildStatItem('5', 'Groupes', Icons.group, AppColors.primary),
+            child: _buildStatItem(
+              '5',
+              'Groupes',
+              Icons.group,
+              AppColors.primary,
+            ),
           ),
-          Container(
-            height: 40,
-            width: 1,
-            color: AppColors.greyLight,
-          ),
+          Container(height: 40, width: 1, color: AppColors.greyLight),
           Flexible(
-            child: _buildStatItem('12', 'Paiements', Icons.payment, AppColors.success),
+            child: _buildStatItem(
+              '12',
+              'Paiements',
+              Icons.payment,
+              AppColors.success,
+            ),
           ),
-          Container(
-            height: 40,
-            width: 1,
-            color: AppColors.greyLight,
-          ),
+          Container(height: 40, width: 1, color: AppColors.greyLight),
           Flexible(
-            child: _buildStatItem('3', 'En attente', Icons.pending, AppColors.warning),
+            child: _buildStatItem(
+              '3',
+              'En attente',
+              Icons.pending,
+              AppColors.warning,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String value, String label, IconData icon, Color color) {
+  Widget _buildStatItem(
+    String value,
+    String label,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 28),
@@ -444,10 +440,7 @@ class EnhancedProfilePage extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -468,7 +461,9 @@ class EnhancedProfilePage extends StatelessWidget {
               AppColors.primary,
               () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                MaterialPageRoute(
+                  builder: (context) => const EditProfilePage(),
+                ),
               ),
             ),
           ),
@@ -480,7 +475,9 @@ class EnhancedProfilePage extends StatelessWidget {
               AppColors.secondary,
               () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+                MaterialPageRoute(
+                  builder: (context) => const ChangePasswordPage(),
+                ),
               ),
             ),
           ),
@@ -492,7 +489,9 @@ class EnhancedProfilePage extends StatelessWidget {
               AppColors.success,
               () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const HelpSupportPage()),
+                MaterialPageRoute(
+                  builder: (context) => const HelpSupportPage(),
+                ),
               ),
             ),
           ),
@@ -633,15 +632,9 @@ class EnhancedProfilePage extends StatelessWidget {
       ),
       title: Text(
         title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
       ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(fontSize: 12),
-      ),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       trailing: Icon(
         Icons.arrow_forward_ios,
         size: 16,
@@ -720,10 +713,7 @@ class EnhancedProfilePage extends StatelessWidget {
             ),
             Text(
               'Gestion de Tontines',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
             SizedBox(height: 16),
             Text('Version 1.0.0'),
@@ -735,10 +725,7 @@ class EnhancedProfilePage extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               '© 2024 PariBa. Tous droits réservés.',
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
           ],
         ),

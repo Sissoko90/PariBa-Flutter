@@ -1,52 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
+import 'core/services/background_notification_handler.dart';
+import 'core/services/notification_service.dart';
 import 'di/injection.dart' as di;
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/auth/auth_event.dart';
 import 'presentation/blocs/auth/auth_state.dart';
 import 'presentation/blocs/group/group_bloc.dart';
 import 'presentation/blocs/membership/membership_bloc.dart';
+import 'presentation/blocs/notification/notification_bloc.dart';
 import 'presentation/pages/auth/login_page.dart';
 import 'presentation/pages/home/improved_dashboard_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Initialize Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Configure background message handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   // Initialize Dependency Injection
   await di.initializeDependencies();
-  
+
+  // Initialize Notification Service
+  final notificationService = di.sl<NotificationService>();
+  await notificationService.initialize();
+
   // Check if onboarding is complete
   final prefs = await SharedPreferences.getInstance();
   final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
-  
+
   runApp(PariBaApp(showOnboarding: !onboardingComplete));
 }
 
 class PariBaApp extends StatelessWidget {
   final bool showOnboarding;
-  
-  const PariBaApp({
-    super.key,
-    required this.showOnboarding,
-  });
+
+  const PariBaApp({super.key, required this.showOnboarding});
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => di.sl<AuthBloc>()..add(const CheckAuthStatusEvent()),
+          create: (context) =>
+              di.sl<AuthBloc>()..add(const CheckAuthStatusEvent()),
         ),
-        BlocProvider(
-          create: (context) => di.sl<GroupBloc>(),
-        ),
-        BlocProvider(
-          create: (context) => di.sl<MembershipBloc>(),
-        ),
+        BlocProvider(create: (context) => di.sl<GroupBloc>()),
+        BlocProvider(create: (context) => di.sl<MembershipBloc>()),
+        BlocProvider(create: (context) => di.sl<NotificationBloc>()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
@@ -71,29 +82,26 @@ class AuthWrapper extends StatelessWidget {
         // Afficher les erreurs si nécessaire
         if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
           );
         }
       },
       builder: (context, state) {
         print('🔍 AuthWrapper - État actuel: ${state.runtimeType}');
-        
+
         if (state is AuthLoading || state is AuthInitial) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
-        
+
         if (state is Authenticated) {
-          print('✅ AuthWrapper - Utilisateur authentifié: ${state.person.email}');
+          print(
+            '✅ AuthWrapper - Utilisateur authentifié: ${state.person.email}',
+          );
           return const ImprovedDashboardPage();
         }
-        
+
         print('❌ AuthWrapper - Non authentifié, affichage LoginPage');
         return const LoginPage();
       },
@@ -185,4 +193,3 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-

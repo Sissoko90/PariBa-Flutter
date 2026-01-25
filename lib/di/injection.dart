@@ -5,6 +5,9 @@ import 'package:get_it/get_it.dart';
 import '../core/network/dio_client.dart';
 import '../core/network/network_info.dart';
 import '../core/security/token_manager.dart';
+import '../core/services/firebase_messaging_service.dart';
+import '../core/services/notification_service.dart';
+import '../presentation/blocs/notification/notification_bloc.dart';
 
 // Data
 import '../data/datasources/remote/auth_remote_datasource.dart';
@@ -15,6 +18,7 @@ import '../data/datasources/remote/payment_remote_datasource.dart';
 import '../data/datasources/remote/notification_remote_datasource.dart';
 import '../data/datasources/remote/person_remote_datasource.dart';
 import '../data/datasources/remote/dashboard_remote_datasource.dart';
+import '../data/datasources/remote/advertisement_remote_datasource.dart';
 import '../data/repositories/auth_repository_impl.dart';
 import '../data/repositories/group_repository_impl.dart';
 
@@ -25,6 +29,7 @@ import '../domain/usecases/auth/login_usecase.dart';
 import '../domain/usecases/auth/register_usecase.dart';
 import '../domain/usecases/group/create_group_usecase.dart';
 import '../domain/usecases/group/get_groups_usecase.dart';
+import '../domain/usecases/notification/register_fcm_token_usecase.dart';
 
 // Presentation
 import '../presentation/blocs/auth/auth_bloc.dart';
@@ -36,20 +41,26 @@ final sl = GetIt.instance;
 /// Initialize Dependency Injection
 Future<void> initializeDependencies() async {
   // ============ Core ============
-  
+
   // External
   sl.registerLazySingleton(() => const FlutterSecureStorage());
   sl.registerLazySingleton(() => Connectivity());
-  
+
   // Security
   sl.registerLazySingleton(() => TokenManager(sl()));
-  
+
   // Network
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(sl()));
   sl.registerLazySingleton(() => DioClient(sl()));
 
+  // Notifications
+  sl.registerLazySingleton(() => FirebaseMessagingService());
+  sl.registerLazySingleton(
+    () => NotificationService(sl(), notificationDataSource: sl()),
+  );
+
   // ============ Data ============
-  
+
   // DataSources
   sl.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(sl()),
@@ -75,13 +86,13 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton<DashboardRemoteDataSource>(
     () => DashboardRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<AdvertisementRemoteDataSource>(
+    () => AdvertisementRemoteDataSourceImpl(sl()),
+  );
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(
-      remoteDataSource: sl(),
-      tokenManager: sl(),
-    ),
+    () => AuthRepositoryImpl(remoteDataSource: sl(), tokenManager: sl()),
   );
   sl.registerLazySingleton<GroupRepository>(
     () => GroupRepositoryImpl(
@@ -92,17 +103,20 @@ Future<void> initializeDependencies() async {
   );
 
   // ============ Domain ============
-  
+
   // UseCases - Auth
   sl.registerLazySingleton(() => LoginUseCase(sl()));
   sl.registerLazySingleton(() => RegisterUseCase(sl()));
-  
+
   // UseCases - Group
   sl.registerLazySingleton(() => GetGroupsUseCase(sl()));
   sl.registerLazySingleton(() => CreateGroupUseCase(sl()));
 
+  // UseCases - Notification
+  sl.registerLazySingleton(() => RegisterFcmTokenUseCase(sl()));
+
   // ============ Presentation ============
-  
+
   // BLoCs
   sl.registerFactory(
     () => AuthBloc(
@@ -110,9 +124,10 @@ Future<void> initializeDependencies() async {
       registerUseCase: sl(),
       authRepository: sl(),
       tokenManager: sl(),
+      notificationService: sl(),
     ),
   );
-  
+
   sl.registerFactory(
     () => GroupBloc(
       getGroupsUseCase: sl(),
@@ -120,10 +135,8 @@ Future<void> initializeDependencies() async {
       groupRepository: sl(),
     ),
   );
-  
-  sl.registerFactory(
-    () => MembershipBloc(
-      membershipDataSource: sl(),
-    ),
-  );
+
+  sl.registerFactory(() => MembershipBloc(membershipDataSource: sl()));
+
+  sl.registerFactory(() => NotificationBloc(notificationDataSource: sl()));
 }

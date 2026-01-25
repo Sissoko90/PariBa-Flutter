@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/services/firebase_messaging_service.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../blocs/group/group_bloc.dart';
@@ -12,7 +13,13 @@ import '../groups/groups_list_page.dart';
 import '../groups/create_group_page.dart';
 import '../groups/join_group_page.dart';
 import '../profile/enhanced_profile_page.dart';
-import '../notifications/notifications_page.dart';
+import '../notifications/enhanced_notifications_page.dart';
+import '../../blocs/notification/notification_bloc.dart';
+import '../../blocs/notification/notification_event.dart';
+import '../../blocs/notification/notification_state.dart';
+import '../../widgets/home_advertisement_section.dart';
+import '../../../data/datasources/remote/advertisement_remote_datasource.dart';
+import '../../../di/injection.dart' as di;
 
 /// Improved Dashboard Page
 class ImprovedDashboardPage extends StatefulWidget {
@@ -29,6 +36,18 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
   void initState() {
     super.initState();
     context.read<GroupBloc>().add(const LoadGroupsEvent());
+    context.read<NotificationBloc>().add(const LoadNotificationsEvent());
+    _setupNotificationListener();
+  }
+
+  /// Configurer l'écoute des nouvelles notifications
+  void _setupNotificationListener() {
+    final firebaseService = di.sl<FirebaseMessagingService>();
+    firebaseService.setOnNewNotificationCallback(() {
+      if (mounted) {
+        context.read<NotificationBloc>().add(const RefreshNotificationsEvent());
+      }
+    });
   }
 
   @override
@@ -47,7 +66,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
       case 1:
         return const GroupsListPage();
       case 2:
-        return const NotificationsPage();
+        return const EnhancedNotificationsPage();
       case 3:
         return const EnhancedProfilePage();
       default:
@@ -63,6 +82,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
           child: Column(
             children: [
               _buildWelcomeSection(),
+              _buildAdvertisementSection(),
               _buildQuickStats(),
               _buildQuickActions(),
               _buildRecentActivity(),
@@ -72,6 +92,26 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAdvertisementSection() {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        if (state is Authenticated && state.person.role == 'USER') {
+          // TODO: Vérifier si l'utilisateur a un abonnement actif
+          // Pour l'instant, on considère qu'il n'a pas d'abonnement
+          final hasActiveSubscription = false;
+
+          final adDataSource = di.sl<AdvertisementRemoteDataSource>();
+
+          return HomeAdvertisementSection(
+            hasActiveSubscription: hasActiveSubscription,
+            advertisementDataSource: adDataSource,
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 
@@ -91,10 +131,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
               'Bonjour, $userName 👋',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             background: Container(
               decoration: BoxDecoration(
@@ -116,10 +153,48 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
                 // TODO: Implement search
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {
-                setState(() => _selectedIndex = 2);
+            BlocBuilder<NotificationBloc, NotificationState>(
+              builder: (context, notifState) {
+                int unreadCount = 0;
+                if (notifState is NotificationLoaded) {
+                  unreadCount = notifState.unreadCount;
+                }
+
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {
+                        setState(() => _selectedIndex = 2);
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.error,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
               },
             ),
           ],
@@ -164,10 +239,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
                 const SizedBox(height: 8),
                 Text(
                   DateFormatter.formatDate(DateTime.now()),
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: AppColors.white, fontSize: 14),
                 ),
               ],
             ),
@@ -211,10 +283,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
             children: [
               const Text(
                 'Vue d\'ensemble',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Row(
@@ -305,10 +374,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
           const SizedBox(height: 8),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           Text(
             subtitle,
@@ -330,10 +396,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
         children: [
           const Text(
             'Actions Rapides',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Row(
@@ -447,46 +510,50 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                ...state.groups.take(3).map((group) => Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
-                          child: const Icon(
-                            Icons.group,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        title: Text(
-                          group.nom,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          '${CurrencyFormatter.format(group.montant)} • ${group.frequency}',
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Actif',
-                            style: TextStyle(
-                              color: AppColors.success,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                ...state.groups
+                    .take(3)
+                    .map(
+                      (group) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            child: const Icon(
+                              Icons.group,
+                              color: AppColors.primary,
                             ),
                           ),
+                          title: Text(
+                            group.nom,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            '${CurrencyFormatter.format(group.montant)} • ${group.frequency}',
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Actif',
+                              style: TextStyle(
+                                color: AppColors.success,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          onTap: () {
+                            // TODO: Navigate to group details
+                          },
                         ),
-                        onTap: () {
-                          // TODO: Navigate to group details
-                        },
                       ),
-                    )),
+                    ),
               ],
             ),
           );
@@ -504,10 +571,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
         children: [
           const Text(
             'Paiements à venir',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Card(
@@ -531,10 +595,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
                   ),
                   const Text(
                     'Dans 3 jours',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.warning,
-                    ),
+                    style: TextStyle(fontSize: 11, color: AppColors.warning),
                   ),
                 ],
               ),

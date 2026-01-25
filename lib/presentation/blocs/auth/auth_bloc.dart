@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/security/token_manager.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../domain/usecases/auth/login_usecase.dart';
 import '../../../domain/usecases/auth/register_usecase.dart';
 import '../../../domain/repositories/auth_repository.dart';
@@ -12,12 +13,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final RegisterUseCase registerUseCase;
   final AuthRepository authRepository;
   final TokenManager tokenManager;
+  final NotificationService notificationService;
 
   AuthBloc({
     required this.loginUseCase,
     required this.registerUseCase,
     required this.authRepository,
     required this.tokenManager,
+    required this.notificationService,
   }) : super(const AuthInitial()) {
     on<LoginEvent>(_onLogin);
     on<RegisterEvent>(_onRegister);
@@ -54,6 +57,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       await tokenManager.savePersonId(authResult.person.id);
       print('💾 AuthBloc - Person ID sauvegardé: ${authResult.person.id}');
+
+      // Enregistrer le token FCM au backend (avec délai et réessai)
+      try {
+        // Attendre un peu pour que Firebase génère le token
+        await Future.delayed(const Duration(seconds: 2));
+        await notificationService.registerTokenToBackend();
+        print('✅ AuthBloc - Token FCM enregistré au backend');
+      } catch (e) {
+        print('⚠️ AuthBloc - Erreur enregistrement token FCM: $e');
+        // Réessayer après 5 secondes
+        Future.delayed(const Duration(seconds: 5), () async {
+          try {
+            await notificationService.registerTokenToBackend();
+            print(
+              '✅ AuthBloc - Token FCM enregistré au backend (2ème tentative)',
+            );
+          } catch (e2) {
+            print('⚠️ AuthBloc - Échec 2ème tentative token FCM: $e2');
+          }
+        });
+      }
 
       print('🚀 AuthBloc - Émission état Authenticated');
       emit(
@@ -118,10 +142,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     final result = await authRepository.logout();
 
-    result.fold((failure) => emit(AuthError(failure.message)), (_) async {
+    if (result.isLeft()) {
+      final failure = result.fold((l) => l, (r) => null)!;
+      emit(AuthError(failure.message));
+    } else {
       await tokenManager.clearTokens();
       emit(const Unauthenticated());
-    });
+    }
   }
 
   /// Check Auth Status

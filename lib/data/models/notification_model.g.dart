@@ -10,7 +10,9 @@ NotificationModel _$NotificationModelFromJson(Map<String, dynamic> json) =>
     NotificationModel(
       id: json['id'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.parse(json['updatedAt'] as String),
       personId: json['personId'] as String,
       type: json['type'] as String,
       channel: json['channel'] as String,
@@ -25,7 +27,7 @@ Map<String, dynamic> _$NotificationModelToJson(NotificationModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'createdAt': instance.createdAt.toIso8601String(),
-      'updatedAt': instance.updatedAt.toIso8601String(),
+      'updatedAt': instance.updatedAt?.toIso8601String(),
       'personId': instance.personId,
       'type': instance.type,
       'channel': instance.channel,

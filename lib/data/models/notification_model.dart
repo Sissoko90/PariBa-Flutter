@@ -6,7 +6,7 @@ part 'notification_model.g.dart';
 class NotificationModel {
   final String id;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
   final String personId;
   final String type; // REMINDER_DUE, GROUP_INVITATION, PAYMENT_SUCCESS, etc.
   final String channel; // PUSH, SMS, WHATSAPP, EMAIL
@@ -19,7 +19,7 @@ class NotificationModel {
   NotificationModel({
     required this.id,
     required this.createdAt,
-    required this.updatedAt,
+    this.updatedAt,
     required this.personId,
     required this.type,
     required this.channel,

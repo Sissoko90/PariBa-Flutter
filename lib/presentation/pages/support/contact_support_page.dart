@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../../../data/datasources/remote/support_remote_datasource.dart';
+import '../../../data/models/support_contact_model.dart';
+import '../../../di/injection.dart' as di;
+import 'package:url_launcher/url_launcher.dart';
 
 /// Contact Support Page - Contacter le support
 class ContactSupportPage extends StatefulWidget {
@@ -15,16 +19,41 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
   final _formKey = GlobalKey<FormState>();
   final _subjectController = TextEditingController();
   final _messageController = TextEditingController();
-  String _selectedCategory = 'Général';
+  String _selectedCategory = 'GENERAL_INQUIRY';
+  late final SupportRemoteDataSource _dataSource;
+  bool _isSubmitting = false;
+  SupportContactModel? _contactInfo;
+  bool _isLoadingContact = true;
 
-  final List<String> _categories = [
-    'Général',
-    'Problème technique',
-    'Paiement',
-    'Compte',
-    'Groupe',
-    'Autre',
-  ];
+  final Map<String, String> _categories = {
+    'GENERAL_INQUIRY': 'Question générale',
+    'TECHNICAL_ISSUE': 'Problème technique',
+    'PAYMENT_ISSUE': 'Problème de paiement',
+    'ACCOUNT_ISSUE': 'Problème de compte',
+    'BUG_REPORT': 'Signalement de bug',
+    'OTHER': 'Autre',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _dataSource = SupportRemoteDataSourceImpl(di.sl());
+    _loadContactInfo();
+  }
+
+  Future<void> _loadContactInfo() async {
+    try {
+      final contact = await _dataSource.getSupportContact();
+      setState(() {
+        _contactInfo = contact;
+        _isLoadingContact = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingContact = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -33,24 +62,47 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Message envoyé avec succès !'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      Navigator.pop(context);
+      setState(() => _isSubmitting = true);
+
+      try {
+        await _dataSource.createTicket({
+          'type': _selectedCategory,
+          'subject': _subjectController.text,
+          'message': _messageController.text,
+        });
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ticket créé avec succès !'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contacter le support'),
-      ),
+      appBar: AppBar(title: const Text('Contacter le support')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -64,9 +116,7 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
@@ -107,10 +157,7 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
               // Catégorie
               const Text(
                 'Catégorie',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -119,10 +166,10 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
                   prefixIcon: Icon(Icons.category),
                   border: OutlineInputBorder(),
                 ),
-                items: _categories.map((category) {
+                items: _categories.entries.map((entry) {
                   return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
+                    value: entry.key,
+                    child: Text(entry.value),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -135,10 +182,7 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
               // Sujet
               const Text(
                 'Sujet',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               CustomTextField(
@@ -159,10 +203,7 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
               // Message
               const Text(
                 'Message',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               CustomTextField(
@@ -186,8 +227,10 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
 
               // Bouton Envoyer
               CustomButton(
-                text: 'Envoyer le message',
-                onPressed: _handleSubmit,
+                text: _isSubmitting
+                    ? 'Envoi en cours...'
+                    : 'Envoyer le message',
+                onPressed: _isSubmitting ? null : _handleSubmit,
                 icon: Icons.send,
               ),
 
@@ -196,57 +239,132 @@ class _ContactSupportPageState extends State<ContactSupportPage> {
               // Autres moyens de contact
               const Text(
                 'Autres moyens de nous contacter',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+
+              if (_isLoadingContact)
+                const Center(child: CircularProgressIndicator())
+              else ...[
+                _buildContactCard(
+                  'Email',
+                  _contactInfo?.email ?? 'makenzyks6@gmail.com',
+                  Icons.email,
+                  AppColors.info,
+                  () => _launchEmail(),
                 ),
-              ),
-              const SizedBox(height: 12),
 
-              _buildContactCard(
-                'Email',
-                'support@pariba.com',
-                Icons.email,
-                AppColors.info,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ouvrir l\'application email')),
-                  );
-                },
-              ),
+                const SizedBox(height: 12),
 
-              const SizedBox(height: 12),
+                _buildContactCard(
+                  'Téléphone',
+                  _contactInfo?.phone ?? '+223 97758697',
+                  Icons.phone,
+                  AppColors.success,
+                  () => _launchPhone(),
+                ),
 
-              _buildContactCard(
-                'Téléphone',
-                '+223 76 71 41 42',
-                Icons.phone,
-                AppColors.success,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Appeler le support')),
-                  );
-                },
-              ),
+                const SizedBox(height: 12),
 
-              const SizedBox(height: 12),
-
-              _buildContactCard(
-                'WhatsApp',
-                '+223 76 71 41 42',
-                Icons.message,
-                AppColors.success,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ouvrir WhatsApp')),
-                  );
-                },
-              ),
+                _buildContactCard(
+                  'WhatsApp',
+                  _contactInfo?.whatsappNumber ??
+                      _contactInfo?.phone ??
+                      '+223 97 75 86 97',
+                  Icons.message,
+                  AppColors.success,
+                  () => _launchWhatsApp(),
+                ),
+              ],
+              if (!_isLoadingContact && _contactInfo?.supportHours != null)
+                const SizedBox(height: 16),
+              if (!_isLoadingContact && _contactInfo?.supportHours != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _contactInfo!.supportHours!,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _launchEmail() async {
+    final email = _contactInfo?.email ?? 'makenzyks6@gmail.com';
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: email,
+      query: 'subject=Support PariBa',
+    );
+
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible d\'ouvrir l\'application email'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _launchPhone() async {
+    final phone = _contactInfo?.phone.replaceAll(' ', '') ?? '+22376714142';
+    final Uri phoneUri = Uri(scheme: 'tel', path: phone);
+
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible de lancer l\'appel'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _launchWhatsApp() async {
+    final whatsapp =
+        (_contactInfo?.whatsappNumber ?? _contactInfo?.phone ?? '+22376714142')
+            .replaceAll(' ', '')
+            .replaceAll('+', '');
+    final Uri whatsappUri = Uri.parse(
+      'https://wa.me/$whatsapp?text=Bonjour, j\'ai besoin d\'aide',
+    );
+
+    if (await canLaunchUrl(whatsappUri)) {
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible d\'ouvrir WhatsApp'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Widget _buildContactCard(

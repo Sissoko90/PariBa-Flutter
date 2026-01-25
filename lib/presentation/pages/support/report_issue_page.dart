@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../../../data/datasources/remote/support_remote_datasource.dart';
+import '../../../di/injection.dart' as di;
 
 /// Report Issue Page - Signaler un problème
 class ReportIssuePage extends StatefulWidget {
@@ -15,24 +20,67 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _selectedType = 'Bug';
-  String _selectedPriority = 'Moyenne';
+  String _selectedType = 'BUG_REPORT';
+  String _selectedPriority = 'MEDIUM';
+  late final SupportRemoteDataSource _dataSource;
+  bool _isSubmitting = false;
+  String _appVersion = 'Chargement...';
+  String _platform = 'Chargement...';
+  String _deviceModel = 'Chargement...';
 
-  final List<String> _issueTypes = [
-    'Bug',
-    'Erreur de paiement',
-    'Problème de connexion',
-    'Problème d\'affichage',
-    'Fonctionnalité manquante',
-    'Autre',
-  ];
+  final Map<String, String> _issueTypes = {
+    'BUG_REPORT': 'Signalement de bug',
+    'PAYMENT_ISSUE': 'Erreur de paiement',
+    'TECHNICAL_ISSUE': 'Problème technique',
+    'FEATURE_REQUEST': 'Fonctionnalité manquante',
+    'OTHER': 'Autre',
+  };
 
-  final List<String> _priorities = [
-    'Basse',
-    'Moyenne',
-    'Haute',
-    'Critique',
-  ];
+  final Map<String, String> _priorities = {
+    'LOW': 'Basse',
+    'MEDIUM': 'Moyenne',
+    'HIGH': 'Haute',
+    'URGENT': 'Urgente',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _dataSource = SupportRemoteDataSourceImpl(di.sl());
+    _loadDeviceInfo();
+  }
+
+  Future<void> _loadDeviceInfo() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final deviceInfo = DeviceInfoPlugin();
+
+      String deviceModel = 'Inconnu';
+      String platform = Platform.operatingSystem;
+
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceModel = '${androidInfo.manufacturer} ${androidInfo.model}';
+        platform = 'Android ${androidInfo.version.release}';
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        deviceModel = iosInfo.model;
+        platform = 'iOS ${iosInfo.systemVersion}';
+      }
+
+      setState(() {
+        _appVersion = packageInfo.version;
+        _platform = platform;
+        _deviceModel = deviceModel;
+      });
+    } catch (e) {
+      setState(() {
+        _appVersion = '1.0.0';
+        _platform = Platform.operatingSystem;
+        _deviceModel = 'Inconnu';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -41,24 +89,49 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Problème signalé avec succès !'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      Navigator.pop(context);
+      setState(() => _isSubmitting = true);
+
+      try {
+        await _dataSource.createTicket({
+          'type': _selectedType,
+          'subject': _titleController.text,
+          'message':
+              '${_descriptionController.text}\n\n--- Informations système ---\nVersion: $_appVersion\nPlateforme: $_platform\nAppareil: $_deviceModel',
+          'priority': _selectedPriority,
+        });
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Problème signalé avec succès !'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Signaler un problème'),
-      ),
+      appBar: AppBar(title: const Text('Signaler un problème')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -72,9 +145,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                 decoration: BoxDecoration(
                   color: AppColors.warning.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.warning.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
@@ -115,10 +186,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
               // Type de problème
               const Text(
                 'Type de problème',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -127,10 +195,10 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                   prefixIcon: Icon(Icons.category),
                   border: OutlineInputBorder(),
                 ),
-                items: _issueTypes.map((type) {
+                items: _issueTypes.entries.map((entry) {
                   return DropdownMenuItem(
-                    value: type,
-                    child: Text(type),
+                    value: entry.key,
+                    child: Text(entry.value),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -143,10 +211,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
               // Priorité
               const Text(
                 'Priorité',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -155,18 +220,18 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                   prefixIcon: Icon(Icons.priority_high),
                   border: OutlineInputBorder(),
                 ),
-                items: _priorities.map((priority) {
+                items: _priorities.entries.map((entry) {
                   return DropdownMenuItem(
-                    value: priority,
+                    value: entry.key,
                     child: Row(
                       children: [
                         Icon(
                           Icons.circle,
                           size: 12,
-                          color: _getPriorityColor(priority),
+                          color: _getPriorityColor(entry.key),
                         ),
                         const SizedBox(width: 8),
-                        Text(priority),
+                        Text(entry.value),
                       ],
                     ),
                   );
@@ -181,10 +246,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
               // Titre
               const Text(
                 'Titre',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               CustomTextField(
@@ -205,16 +267,14 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
               // Description
               const Text(
                 'Description',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description détaillée',
-                hint: 'Décrivez le problème en détail...\n\nÉtapes pour reproduire:\n1. ...\n2. ...\n\nRésultat attendu:\n...\n\nRésultat obtenu:\n...',
+                hint:
+                    'Décrivez le problème en détail...\n\nÉtapes pour reproduire:\n1. ...\n2. ...\n\nRésultat attendu:\n...\n\nRésultat obtenu:\n...',
                 prefixIcon: Icons.description,
                 maxLines: 10,
                 validator: (value) {
@@ -245,11 +305,11 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _buildInfoRow('Version', '1.0.0'),
+                      _buildInfoRow('Version', _appVersion),
                       const Divider(),
-                      _buildInfoRow('Plateforme', 'Android'),
+                      _buildInfoRow('Plateforme', _platform),
                       const Divider(),
-                      _buildInfoRow('Appareil', 'Samsung Galaxy S21'),
+                      _buildInfoRow('Appareil', _deviceModel),
                       const SizedBox(height: 8),
                       Text(
                         'Ces informations seront incluses automatiquement',
@@ -267,8 +327,10 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
 
               // Bouton Envoyer
               CustomButton(
-                text: 'Signaler le problème',
-                onPressed: _handleSubmit,
+                text: _isSubmitting
+                    ? 'Envoi en cours...'
+                    : 'Signaler le problème',
+                onPressed: _isSubmitting ? null : _handleSubmit,
                 icon: Icons.send,
               ),
 
@@ -324,10 +386,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
           ),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
         ],
       ),
@@ -336,13 +395,13 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
 
   Color _getPriorityColor(String priority) {
     switch (priority) {
-      case 'Basse':
+      case 'LOW':
         return AppColors.success;
-      case 'Moyenne':
+      case 'MEDIUM':
         return AppColors.info;
-      case 'Haute':
+      case 'HIGH':
         return AppColors.warning;
-      case 'Critique':
+      case 'URGENT':
         return AppColors.error;
       default:
         return AppColors.textSecondary;
