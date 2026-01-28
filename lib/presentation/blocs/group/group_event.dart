@@ -39,16 +39,16 @@ class CreateGroupEvent extends GroupEvent {
 
   @override
   List<Object?> get props => [
-        nom,
-        description,
-        montant,
-        frequency,
-        rotationMode,
-        totalTours,
-        startDate,
-        latePenaltyAmount,
-        graceDays,
-      ];
+    nom,
+    description,
+    montant,
+    frequency,
+    rotationMode,
+    totalTours,
+    startDate,
+    latePenaltyAmount,
+    graceDays,
+  ];
 }
 
 /// Load Group Details Event

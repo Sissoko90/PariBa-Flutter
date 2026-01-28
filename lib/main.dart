@@ -16,8 +16,10 @@ import 'presentation/blocs/group/group_bloc.dart';
 import 'presentation/blocs/membership/membership_bloc.dart';
 import 'presentation/blocs/notification/notification_bloc.dart';
 import 'presentation/pages/auth/login_page.dart';
+import 'presentation/blocs/payment/payment_bloc.dart';
 import 'presentation/pages/home/improved_dashboard_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
+import 'core/services/payment_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +60,10 @@ class PariBaApp extends StatelessWidget {
         BlocProvider(create: (context) => di.sl<GroupBloc>()),
         BlocProvider(create: (context) => di.sl<MembershipBloc>()),
         BlocProvider(create: (context) => di.sl<NotificationBloc>()),
+        BlocProvider<PaymentBloc>(
+          create: (context) =>
+              PaymentBloc(paymentService: di.sl<PaymentService>()),
+        ),
       ],
       child: MaterialApp(
         title: AppConstants.appName,

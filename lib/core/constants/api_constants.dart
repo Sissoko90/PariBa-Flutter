@@ -6,7 +6,7 @@ class ApiConstants {
   /// Base URL for API
   /// Pour Android Emulator, utilisez 10.0.2.2 au lieu de localhost
   /// Pour iOS Simulator, utilisez localhost ou votre IP
-  static const String baseUrl = 'http://192.168.100.99:8085/api/v1';
+  static const String baseUrl = 'http://192.168.100.57:8082/api/v1';
 
   // Auth Endpoints
   static const String login = '/auth/login';

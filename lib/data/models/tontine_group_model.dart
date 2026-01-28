@@ -17,6 +17,8 @@ class TontineGroupModel {
   final double? latePenaltyAmount;
   final int? graceDays;
   final String creatorPersonId;
+  final String? role; // AJOUTEZ CETTE PROPRIÉTÉ
+  final String? status;
 
   TontineGroupModel({
     required this.id,
@@ -32,6 +34,8 @@ class TontineGroupModel {
     this.latePenaltyAmount,
     this.graceDays,
     required this.creatorPersonId,
+    this.role, // AJOUTEZ ICI
+    this.status = 'active',
   });
 
   factory TontineGroupModel.fromJson(Map<String, dynamic> json) {
@@ -62,8 +66,12 @@ class TontineGroupModel {
       latePenaltyAmount: (json['latePenaltyAmount'] as num?)?.toDouble(),
       graceDays: (json['graceDays'] as num?)?.toInt(),
       creatorPersonId: creatorId,
+      role: json['role'] as String?, // AJOUTEZ ICI
+      status: json['status'] as String? ?? 'active', // AJOUTEZ ICI
     );
   }
 
   Map<String, dynamic> toJson() => _$TontineGroupModelToJson(this);
+
+  // Optionnel : Ajoutez une méthode pour convertir en TontineGroup si nécessaire
 }

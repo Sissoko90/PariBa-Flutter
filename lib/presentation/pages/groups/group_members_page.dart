@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../domain/entities/tontine_group.dart';
+import '../../../data/models/tontine_group_model.dart';
 import '../../blocs/membership/membership_bloc.dart';
 import '../../blocs/membership/membership_event.dart';
 import '../../blocs/membership/membership_state.dart';
 
 /// Group Members Page - Gestion des membres d'un groupe
 class GroupMembersPage extends StatefulWidget {
-  final TontineGroup group;
+  final TontineGroupModel group;
 
-  const GroupMembersPage({
-    super.key,
-    required this.group,
-  });
+  const GroupMembersPage({super.key, required this.group});
 
   @override
   State<GroupMembersPage> createState() => _GroupMembersPageState();
@@ -51,15 +48,19 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, color: AppColors.error, size: 64),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 64,
+                  ),
                   const SizedBox(height: 16),
                   Text('Erreur: ${state.message}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       context.read<MembershipBloc>().add(
-                            LoadGroupMembersEvent(widget.group.id),
-                          );
+                        LoadGroupMembersEvent(widget.group.id),
+                      );
                     },
                     child: const Text('Réessayer'),
                   ),
@@ -97,9 +98,7 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
               // Liste des membres
               Expanded(
                 child: members.isEmpty
-                    ? const Center(
-                        child: Text('Aucun membre pour le moment'),
-                      )
+                    ? const Center(child: Text('Aucun membre pour le moment'))
                     : ListView.builder(
                         padding: const EdgeInsets.all(8),
                         itemCount: members.length,
@@ -123,7 +122,7 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
 
   void _showInviteMemberDialog(BuildContext context) {
     final emailController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -161,7 +160,7 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
                 );
                 return;
               }
-              
+
               Navigator.pop(context);
               // TODO: Appeler l'API d'invitation
               ScaffoldMessenger.of(context).showSnackBar(
@@ -190,10 +189,7 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
         ),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -266,9 +262,16 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
                     value: 'remove',
                     child: Row(
                       children: [
-                        Icon(Icons.person_remove, size: 18, color: AppColors.error),
+                        Icon(
+                          Icons.person_remove,
+                          size: 18,
+                          color: AppColors.error,
+                        ),
                         SizedBox(width: 8),
-                        Text('Retirer', style: TextStyle(color: AppColors.error)),
+                        Text(
+                          'Retirer',
+                          style: TextStyle(color: AppColors.error),
+                        ),
                       ],
                     ),
                   ),

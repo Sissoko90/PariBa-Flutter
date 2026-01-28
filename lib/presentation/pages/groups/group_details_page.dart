@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pariba/presentation/pages/groups/accept_invitation_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
-import '../../../domain/entities/tontine_group.dart';
+import '../../pages/payments/payment_page.dart';
 import '../../blocs/group/group_bloc.dart';
 import '../../blocs/group/group_event.dart';
 import '../../blocs/membership/membership_bloc.dart';
@@ -10,10 +11,11 @@ import '../../blocs/membership/membership_event.dart';
 import '../../blocs/membership/membership_state.dart';
 import 'group_members_page.dart';
 import 'group_invitations_page.dart';
+import '../../../data/models/tontine_group_model.dart';
 
 /// Group Details Page - Détails d'un groupe de tontine
 class GroupDetailsPage extends StatefulWidget {
-  final TontineGroup group;
+  final TontineGroupModel group;
 
   const GroupDetailsPage({super.key, required this.group});
 
@@ -164,8 +166,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
           Flexible(
             child: BlocBuilder<MembershipBloc, MembershipState>(
               builder: (context, state) {
-                final memberCount = state is MembersLoaded 
-                    ? state.members.length.toString() 
+                final memberCount = state is MembersLoaded
+                    ? state.members.length.toString()
                     : '...';
                 return _buildStatItem(
                   memberCount,
@@ -179,7 +181,9 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
           Container(height: 40, width: 1, color: AppColors.greyLight),
           Flexible(
             child: _buildStatItem(
-              CurrencyFormatter.formatCompact(widget.group.montant * widget.group.totalTours),
+              CurrencyFormatter.formatCompact(
+                widget.group.montant * widget.group.totalTours,
+              ),
               'Total',
               Icons.account_balance_wallet,
               AppColors.secondary,
@@ -240,7 +244,11 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
               CurrencyFormatter.format(widget.group.montant),
             ),
             const Divider(),
-            _buildInfoRow(Icons.calendar_today, 'Fréquence', widget.group.frequency),
+            _buildInfoRow(
+              Icons.calendar_today,
+              'Fréquence',
+              widget.group.frequency,
+            ),
             const Divider(),
             _buildInfoRow(
               Icons.rotate_right,
@@ -334,7 +342,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => GroupInvitationsPage(group: widget.group),
+                      builder: (context) =>
+                          GroupInvitationsPage(group: widget.group),
                     ),
                   ),
                 ),
@@ -345,11 +354,12 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                   'Payer',
                   Icons.payment,
                   AppColors.success,
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Effectuer un paiement')),
-                    );
-                  },
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PaymentPage(group: widget.group),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -426,7 +436,11 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 48,
+                  ),
                   const SizedBox(height: 8),
                   Text('Erreur: ${state.message}'),
                 ],
@@ -451,7 +465,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => GroupMembersPage(group: widget.group),
+                      builder: (context) =>
+                          GroupMembersPage(group: widget.group),
                     ),
                   ),
                   child: Text('Voir tout (${members.length})'),
@@ -466,13 +481,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                 ...displayMembers.map((member) {
                   final person = member['person'] as Map<String, dynamic>?;
                   final role = member['role'] as String? ?? 'MEMBER';
-                  
+
                   if (person == null) return const SizedBox.shrink();
-                  
+
                   final prenom = person['prenom'] as String? ?? '';
                   final nom = person['nom'] as String? ?? '';
                   final fullName = '$prenom $nom'.trim();
-                  
+
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor: AppColors.primary.withOpacity(0.1),
@@ -487,7 +502,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                     title: Text(fullName.isNotEmpty ? fullName : 'Membre'),
                     subtitle: Text(_getRoleLabel(role)),
                     trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.success.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -634,6 +652,19 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
             ),
           ),
           const SizedBox(height: 20),
+          ListTile(
+            leading: const Icon(Icons.group_add, color: AppColors.primary),
+            title: const Text('Rejoindre un groupe'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AcceptInvitationPage(),
+                ),
+              );
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.edit, color: AppColors.primary),
             title: const Text('Modifier le groupe'),

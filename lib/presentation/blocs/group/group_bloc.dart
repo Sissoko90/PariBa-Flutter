@@ -4,6 +4,7 @@ import '../../../domain/usecases/group/get_groups_usecase.dart';
 import '../../../domain/repositories/group_repository.dart';
 import 'group_event.dart';
 import 'group_state.dart';
+import '../../../data/mappers/tontine_group_mapper.dart';
 
 /// Group BLoC
 class GroupBloc extends Bloc<GroupEvent, GroupState> {
@@ -32,10 +33,10 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
 
     final result = await getGroupsUseCase();
 
-    result.fold(
-      (failure) => emit(GroupError(failure.message)),
-      (groups) => emit(GroupsLoaded(groups)),
-    );
+    result.fold((failure) => emit(GroupError(failure.message)), (groups) {
+      final models = TontineGroupMapper.toModelList(groups);
+      emit(GroupsLoaded(models));
+    });
   }
 
   /// Handle Create Group
@@ -66,7 +67,11 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
       final group = result.fold((l) => null, (r) => r)!;
       print('✅ GroupBloc - Groupe créé: ${group.nom}');
       print('🚀 GroupBloc - Émission état GroupCreated');
-      emit(GroupCreated(group));
+
+      // CONVERTIR EN MODÈLE
+      final groupModel = TontineGroupMapper.toModel(group);
+      emit(GroupCreated(groupModel)); // <-- CORRECTION ICI
+
       print('✅ GroupBloc - État GroupCreated émis');
     }
   }
@@ -80,10 +85,11 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
 
     final result = await groupRepository.getGroupById(event.groupId);
 
-    result.fold(
-      (failure) => emit(GroupError(failure.message)),
-      (group) => emit(GroupDetailsLoaded(group)),
-    );
+    result.fold((failure) => emit(GroupError(failure.message)), (group) {
+      // CONVERTIR EN MODÈLE
+      final groupModel = TontineGroupMapper.toModel(group);
+      emit(GroupDetailsLoaded(groupModel)); // <-- CORRECTION ICI
+    });
   }
 
   /// Handle Delete Group

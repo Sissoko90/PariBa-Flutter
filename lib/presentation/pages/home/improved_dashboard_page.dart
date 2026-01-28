@@ -360,13 +360,19 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
           Row(
             children: [
               Icon(icon, color: color, size: 24),
-              const Spacer(),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              const SizedBox(width: 8), // Espace entre l'icône et le texte
+              Expanded(
+                // WRAP LE TEXTE DANS UN EXPANDED
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20, // Légèrement plus petit
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                  overflow:
+                      TextOverflow.ellipsis, // Ajouter ellipsis si trop long
+                  maxLines: 1, // Garder sur une ligne
                 ),
               ),
             ],

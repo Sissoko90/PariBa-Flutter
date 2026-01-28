@@ -1,3 +1,5 @@
+// di/injection.dart - CORRIGÉ
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
@@ -5,10 +7,12 @@ import 'package:get_it/get_it.dart';
 import '../core/network/dio_client.dart';
 import '../core/network/network_info.dart';
 import '../core/security/token_manager.dart';
+import '../core/services/group_service.dart';
+import '../core/services/auth_service.dart';
 import '../core/services/firebase_messaging_service.dart';
 import '../core/services/notification_service.dart';
 import '../presentation/blocs/notification/notification_bloc.dart';
-
+import '../core/services/payment_service.dart';
 // Data
 import '../data/datasources/remote/auth_remote_datasource.dart';
 import '../data/datasources/remote/group_remote_datasource.dart';
@@ -35,19 +39,31 @@ import '../domain/usecases/notification/register_fcm_token_usecase.dart';
 import '../presentation/blocs/auth/auth_bloc.dart';
 import '../presentation/blocs/group/group_bloc.dart';
 import '../presentation/blocs/membership/membership_bloc.dart';
+import '../presentation/blocs/payment/payment_bloc.dart';
 
 final sl = GetIt.instance;
 
 /// Initialize Dependency Injection
 Future<void> initializeDependencies() async {
+  print('🔄 Initialisation des dépendances...');
+
   // ============ Core ============
 
   // External
   sl.registerLazySingleton(() => const FlutterSecureStorage());
   sl.registerLazySingleton(() => Connectivity());
 
+  // Services - DOIT ÊTRE EN PREMIER
+  sl.registerLazySingleton(() => AuthService());
+  print('✅ AuthService enregistré');
+
   // Security
   sl.registerLazySingleton(() => TokenManager(sl()));
+  sl.registerLazySingleton(() => PaymentService());
+  print('✅ PaymentService enregistré');
+  // GroupService dépend de AuthService
+  sl.registerLazySingleton(() => GroupService(authService: sl()));
+  print('✅ GroupService enregistré');
 
   // Network
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(sl()));
@@ -60,6 +76,8 @@ Future<void> initializeDependencies() async {
   );
 
   // ============ Data ============
+
+  // BLoCs
 
   // DataSources
   sl.registerLazySingleton<AuthRemoteDataSource>(
@@ -123,7 +141,7 @@ Future<void> initializeDependencies() async {
       loginUseCase: sl(),
       registerUseCase: sl(),
       authRepository: sl(),
-      tokenManager: sl(),
+      authService: sl(),
       notificationService: sl(),
     ),
   );
@@ -139,4 +157,6 @@ Future<void> initializeDependencies() async {
   sl.registerFactory(() => MembershipBloc(membershipDataSource: sl()));
 
   sl.registerFactory(() => NotificationBloc(notificationDataSource: sl()));
+  sl.registerFactory(() => PaymentBloc(paymentService: sl()));
+  print('✅ Toutes les dépendances initialisées');
 }

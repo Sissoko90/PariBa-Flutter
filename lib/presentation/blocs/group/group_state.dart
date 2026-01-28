@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../domain/entities/tontine_group.dart';
+import '../../../data/models/tontine_group_model.dart';
 
 /// Group States
 abstract class GroupState extends Equatable {
@@ -21,7 +21,7 @@ class GroupLoading extends GroupState {
 
 /// Groups Loaded State
 class GroupsLoaded extends GroupState {
-  final List<TontineGroup> groups;
+  final List<TontineGroupModel> groups;
 
   const GroupsLoaded(this.groups);
 
@@ -31,7 +31,7 @@ class GroupsLoaded extends GroupState {
 
 /// Group Details Loaded State
 class GroupDetailsLoaded extends GroupState {
-  final TontineGroup group;
+  final TontineGroupModel group;
 
   const GroupDetailsLoaded(this.group);
 
@@ -41,7 +41,7 @@ class GroupDetailsLoaded extends GroupState {
 
 /// Group Created State
 class GroupCreated extends GroupState {
-  final TontineGroup group;
+  final TontineGroupModel group;
 
   const GroupCreated(this.group);
 

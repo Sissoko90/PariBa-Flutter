@@ -1,5 +1,7 @@
+// presentation/blocs/auth/auth_bloc.dart - CORRIGÉ
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/security/token_manager.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../domain/usecases/auth/login_usecase.dart';
 import '../../../domain/usecases/auth/register_usecase.dart';
@@ -12,14 +14,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
   final AuthRepository authRepository;
-  final TokenManager tokenManager;
+  final AuthService authService; // CHANGÉ
   final NotificationService notificationService;
 
   AuthBloc({
     required this.loginUseCase,
     required this.registerUseCase,
     required this.authRepository,
-    required this.tokenManager,
+    required this.authService, // CHANGÉ
     required this.notificationService,
   }) : super(const AuthInitial()) {
     on<LoginEvent>(_onLogin);
@@ -38,7 +40,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       password: event.password,
     );
 
-    // Utiliser if/else au lieu de fold pour gérer correctement async
     if (result.isLeft()) {
       final failure = result.fold((l) => l, (r) => null)!;
       print('❌ AuthBloc - Login échoué: ${failure.message}');
@@ -47,36 +48,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final authResult = result.fold((l) => null, (r) => r)!;
       print('✅ AuthBloc - Login réussi pour: ${authResult.person.email}');
 
-      // Save tokens
-      await tokenManager.saveAccessToken(authResult.accessToken);
-      print('💾 AuthBloc - Access token sauvegardé');
+      // Save tokens using AuthService
+      await authService.saveAccessToken(authResult.accessToken);
+      await authService.savePersonId(authResult.person.id); // AJOUTÉ
+      print('💾 AuthBloc - Tokens sauvegardés via AuthService');
 
       if (authResult.refreshToken != null) {
-        await tokenManager.saveRefreshToken(authResult.refreshToken!);
+        await authService.saveRefreshToken(authResult.refreshToken!);
       }
 
-      await tokenManager.savePersonId(authResult.person.id);
-      print('💾 AuthBloc - Person ID sauvegardé: ${authResult.person.id}');
+      await authService.saveUserInfo(
+        authResult.person.id,
+        authResult.person.email,
+      );
 
-      // Enregistrer le token FCM au backend (avec délai et réessai)
+      // Enregistrer le token FCM au backend
       try {
-        // Attendre un peu pour que Firebase génère le token
-        await Future.delayed(const Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 1));
         await notificationService.registerTokenToBackend();
         print('✅ AuthBloc - Token FCM enregistré au backend');
       } catch (e) {
         print('⚠️ AuthBloc - Erreur enregistrement token FCM: $e');
-        // Réessayer après 5 secondes
-        Future.delayed(const Duration(seconds: 5), () async {
-          try {
-            await notificationService.registerTokenToBackend();
-            print(
-              '✅ AuthBloc - Token FCM enregistré au backend (2ème tentative)',
-            );
-          } catch (e2) {
-            print('⚠️ AuthBloc - Échec 2ème tentative token FCM: $e2');
-          }
-        });
       }
 
       print('🚀 AuthBloc - Émission état Authenticated');
@@ -103,7 +95,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       password: event.password,
     );
 
-    // Utiliser if/else au lieu de fold pour gérer correctement async
     if (result.isLeft()) {
       final failure = result.fold((l) => l, (r) => null)!;
       print('❌ AuthBloc - Inscription échouée: ${failure.message}');
@@ -114,16 +105,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         '✅ AuthBloc - Inscription réussie pour: ${authResult.person.email}',
       );
 
-      // Save tokens
-      await tokenManager.saveAccessToken(authResult.accessToken);
-      print('💾 AuthBloc - Access token sauvegardé');
+      // Save tokens using AuthService
+      await authService.saveAccessToken(authResult.accessToken);
+      await authService.savePersonId(authResult.person.id); // AJOUTÉ
+      print('💾 AuthBloc - Tokens sauvegardés via AuthService');
 
       if (authResult.refreshToken != null) {
-        await tokenManager.saveRefreshToken(authResult.refreshToken!);
+        await authService.saveRefreshToken(authResult.refreshToken!);
       }
 
-      await tokenManager.savePersonId(authResult.person.id);
-      print('💾 AuthBloc - Person ID sauvegardé: ${authResult.person.id}');
+      await authService.saveUserInfo(
+        authResult.person.id,
+        authResult.person.email,
+      );
 
       print('🚀 AuthBloc - Émission état Authenticated');
       emit(
@@ -146,7 +140,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final failure = result.fold((l) => l, (r) => null)!;
       emit(AuthError(failure.message));
     } else {
-      await tokenManager.clearTokens();
+      await authService.clearTokens();
       emit(const Unauthenticated());
     }
   }
@@ -158,19 +152,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
 
-    final isAuth = await authRepository.isAuthenticated();
+    // Vérifier avec AuthService
+    final token = await authService.getAccessToken();
 
-    if (isAuth) {
-      final result = await authRepository.getCurrentUser();
-      await result.fold((failure) async => emit(const Unauthenticated()), (
-        person,
-      ) async {
-        final token = await tokenManager.getAccessToken();
-        if (!emit.isDone) {
-          emit(Authenticated(person: person, accessToken: token ?? ''));
-        }
-      });
+    if (token != null && token.isNotEmpty) {
+      try {
+        final result = await authRepository.getCurrentUser();
+
+        result.fold(
+          (failure) {
+            print(
+              '❌ AuthBloc - Échec récupération utilisateur: ${failure.message}',
+            );
+            emit(const Unauthenticated());
+          },
+          (person) {
+            print('✅ AuthBloc - Utilisateur récupéré: ${person.email}');
+            emit(Authenticated(person: person, accessToken: token));
+          },
+        );
+      } catch (e) {
+        print('❌ AuthBloc - Erreur vérification auth status: $e');
+        emit(const Unauthenticated());
+      }
     } else {
+      print('❌ AuthBloc - Pas de token trouvé');
       emit(const Unauthenticated());
     }
   }

@@ -14,7 +14,9 @@ class TontineGroup extends Equatable {
   final String startDate;
   final double? latePenaltyAmount;
   final int? graceDays;
+  final String? role;
   final String creatorPersonId;
+  final String status;
 
   const TontineGroup({
     required this.id,
@@ -29,23 +31,26 @@ class TontineGroup extends Equatable {
     required this.startDate,
     this.latePenaltyAmount,
     this.graceDays,
+    this.role,
+    this.status = 'active',
     required this.creatorPersonId,
   });
 
   @override
   List<Object?> get props => [
-        id,
-        createdAt,
-        updatedAt,
-        nom,
-        description,
-        montant,
-        frequency,
-        rotationMode,
-        totalTours,
-        startDate,
-        latePenaltyAmount,
-        graceDays,
-        creatorPersonId,
-      ];
+    id,
+    createdAt,
+    updatedAt,
+    nom,
+    description,
+    montant,
+    frequency,
+    rotationMode,
+    totalTours,
+    startDate,
+    latePenaltyAmount,
+    graceDays,
+    creatorPersonId,
+    status,
+  ];
 }
