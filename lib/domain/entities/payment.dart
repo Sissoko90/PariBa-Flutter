@@ -47,9 +47,11 @@ class Payment {
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       paymentType: json['paymentType'] as String? ?? 'UNKNOWN',
       status: json['status'] as String? ?? 'PENDING',
-      createdAt: json['createdAt'] is DateTime 
+      createdAt: json['createdAt'] is DateTime
           ? json['createdAt'] as DateTime
-          : DateTime.parse(json['createdAt'] as String? ?? DateTime.now().toIso8601String()),
+          : DateTime.parse(
+              json['createdAt'] as String? ?? DateTime.now().toIso8601String(),
+            ),
       payerName: payerName,
       groupName: json['groupName'] as String?,
       transactionRef: json['externalRef'] as String?,
@@ -57,8 +59,8 @@ class Payment {
       adminNotes: json['adminNotes'] as String?,
       validatedAt: json['validatedAt'] != null
           ? (json['validatedAt'] is DateTime
-              ? json['validatedAt'] as DateTime
-              : DateTime.parse(json['validatedAt'] as String))
+                ? json['validatedAt'] as DateTime
+                : DateTime.parse(json['validatedAt'] as String))
           : null,
       payer: json['payer'] as Map<String, dynamic>?,
     );
