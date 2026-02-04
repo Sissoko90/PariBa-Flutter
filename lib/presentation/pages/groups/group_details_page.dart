@@ -12,6 +12,13 @@ import '../../blocs/membership/membership_state.dart';
 import 'group_members_page.dart';
 import 'group_invitations_page.dart';
 import '../../../data/models/tontine_group_model.dart';
+import '../../../domain/entities/tontine_group.dart';
+import '/core/services/payment_service.dart';
+import '../../blocs/payment/payment_bloc.dart';
+import '../../../data/models/tontine_group_model.dart';
+import '../../../domain/entities/tontine_group.dart';
+import '../../pages/payments/admin_payment_validation_page.dart';
+import '../../pages/payments/payment_page.dart'; // Assurez-vous que cette ligne existe
 
 /// Group Details Page - Détails d'un groupe de tontine
 class GroupDetailsPage extends StatefulWidget {
@@ -24,11 +31,53 @@ class GroupDetailsPage extends StatefulWidget {
 }
 
 class _GroupDetailsPageState extends State<GroupDetailsPage> {
+  String? userRole;
+  int pendingPaymentsCount = 0;
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
+    _loadPendingPaymentsCount();
     // Charger les membres du groupe
     context.read<MembershipBloc>().add(LoadGroupMembersEvent(widget.group.id));
+  }
+
+  void _loadUserRole() {
+    // Pour l'instant, définissez le rôle comme admin pour le test
+    // Vous devrez implémenter la récupération réelle du rôle depuis le backend
+    setState(() {
+      userRole =
+          'ADMIN'; // Changez ceci pour 'MEMBER' si l'utilisateur n'est pas admin
+    });
+  }
+
+  void _loadPendingPaymentsCount() {
+    // Pour l'instant, définissez un nombre fixe
+    // Vous devrez implémenter la récupération réelle depuis le backend
+    setState(() {
+      pendingPaymentsCount = 2; // Changez ceci avec la valeur réelle
+    });
+  }
+
+  TontineGroup _convertToEntity() {
+    return TontineGroup(
+      id: widget.group.id,
+      nom: widget.group.nom,
+      montant: widget.group.montant,
+      frequency: widget.group.frequency,
+      rotationMode: widget.group.rotationMode,
+      startDate: widget.group.startDate,
+      totalTours: widget.group.totalTours,
+      description: widget.group.description,
+      latePenaltyAmount: widget.group.latePenaltyAmount,
+      graceDays: widget.group.graceDays,
+      role: widget.group.role,
+      status: widget.group.status ?? 'active',
+      creatorPersonId: widget.group.creatorPersonId,
+      createdAt: widget.group.createdAt,
+      updatedAt: widget.group.updatedAt,
+      isActive: (widget.group.status ?? 'active') == 'active',
+    );
   }
 
   @override
@@ -685,6 +734,40 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
               );
             },
           ),
+          if (userRole == 'ADMIN' || userRole == 'CREATOR')
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.payment, color: AppColors.warning),
+              ),
+              title: const Text('Valider les paiements'),
+              subtitle: const Text('Gérer les paiements en attente'),
+              trailing: Badge(
+                label: Text('$pendingPaymentsCount'),
+                backgroundColor: AppColors.warning,
+                isLabelVisible: pendingPaymentsCount > 0,
+                child: const Icon(Icons.arrow_forward_ios, size: 16),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                final groupEntity = _convertToEntity();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BlocProvider(
+                      create: (context) =>
+                          PaymentBloc(paymentService: PaymentService()),
+                      child: AdminPaymentValidationPage(group: groupEntity),
+                    ),
+                  ),
+                );
+              },
+            ),
+
           ListTile(
             leading: const Icon(Icons.exit_to_app, color: AppColors.error),
             title: const Text('Quitter le groupe'),

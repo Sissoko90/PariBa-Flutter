@@ -31,144 +31,124 @@ class EnhancedProfilePage extends StatelessWidget {
                 expandedHeight: 220,
                 pinned: true,
                 backgroundColor: AppColors.primary,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Gradient background
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              AppColors.primary,
-                              AppColors.primary.withOpacity(0.8),
-                              AppColors.secondary.withOpacity(0.6),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Pattern overlay
-                      Opacity(
-                        opacity: 0.1,
-                        child: Image.asset(
-                          'assets/images/pattern.png',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                      ),
-                      // Content
-                      Padding(
-                        padding: const EdgeInsets.only(top: 60),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Photo de profil avec bordure
-                            Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.white,
-                                  width: 4,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
+                flexibleSpace: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final max = constraints.maxHeight;
+                    final min =
+                        kToolbarHeight + MediaQuery.of(context).padding.top;
+                    final t = ((max - min) / (max - min)).clamp(0.0, 1.0);
 
-                              child: CircleAvatar(
-                                radius: 50,
-                                backgroundColor: AppColors.white,
-                                child: person.photo != null
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          person.photo!,
-                                          width: 100,
-                                          height: 100,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                                return const Icon(
-                                                  Icons.person,
-                                                  size: 50,
-                                                  color: AppColors.primary,
-                                                );
-                                              },
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.person,
-                                        size: 50,
-                                        color: AppColors.primary,
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            // Nom
-                            Text(
-                              person.fullName,
-                              style: const TextStyle(
-                                color: AppColors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            // Email
-                            Text(
-                              person.email,
-                              style: TextStyle(
-                                color: AppColors.white.withOpacity(0.9),
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Badge rôle
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: AppColors.white.withOpacity(0.5),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.verified_user,
-                                    color: AppColors.white,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    person.role,
-                                    style: const TextStyle(
-                                      color: AppColors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withOpacity(0.8),
+                            AppColors.secondary.withOpacity(0.6),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: SizedBox(
+                            height:
+                                72 +
+                                (120 *
+                                    t), // 🔒 Hauteur verrouillée → zéro overflow
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 26 + (18 * t),
+                                    backgroundColor: AppColors.white,
+                                    child: person.photo != null
+                                        ? ClipOval(
+                                            child: Image.network(
+                                              person.photo!,
+                                              width: 96,
+                                              height: 96,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.person,
+                                            size: 40,
+                                            color: AppColors.primary,
+                                          ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    person.fullName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: AppColors.white,
+                                      fontSize: 14 + (6 * t),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (t > 0.5)
+                                    Text(
+                                      person.email,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: AppColors.white.withOpacity(
+                                          0.85,
+                                        ),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  if (t > 0.7)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: AppColors.white.withOpacity(
+                                            0.5,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.verified_user,
+                                            color: AppColors.white,
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            person.role,
+                                            style: const TextStyle(
+                                              color: AppColors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
 

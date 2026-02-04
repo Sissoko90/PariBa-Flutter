@@ -17,6 +17,7 @@ class TontineGroup extends Equatable {
   final String? role;
   final String creatorPersonId;
   final String status;
+  final bool isActive;
 
   const TontineGroup({
     required this.id,
@@ -34,6 +35,7 @@ class TontineGroup extends Equatable {
     this.role,
     this.status = 'active',
     required this.creatorPersonId,
+    required this.isActive,
   });
 
   @override
@@ -52,5 +54,7 @@ class TontineGroup extends Equatable {
     graceDays,
     creatorPersonId,
     status,
+    role,
+    isActive,
   ];
 }

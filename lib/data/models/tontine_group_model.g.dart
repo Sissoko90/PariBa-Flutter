@@ -23,6 +23,8 @@ TontineGroupModel _$TontineGroupModelFromJson(Map<String, dynamic> json) =>
       latePenaltyAmount: (json['latePenaltyAmount'] as num?)?.toDouble(),
       graceDays: (json['graceDays'] as num?)?.toInt(),
       creatorPersonId: json['creatorPersonId'] as String,
+      role: json['role'] as String?,
+      status: json['status'] as String?,
     );
 
 Map<String, dynamic> _$TontineGroupModelToJson(TontineGroupModel instance) =>
@@ -40,4 +42,6 @@ Map<String, dynamic> _$TontineGroupModelToJson(TontineGroupModel instance) =>
       'latePenaltyAmount': instance.latePenaltyAmount,
       'graceDays': instance.graceDays,
       'creatorPersonId': instance.creatorPersonId,
+      'role': instance.role,
+      'status': instance.status,
     };

@@ -151,18 +151,22 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
   }
 
   /// Charger les paiements en attente (admin)
+  /// Dans _onLoadPendingPayments method:
   Future<void> _onLoadPendingPayments(
     LoadPendingPaymentsEvent event,
     Emitter<PaymentState> emit,
   ) async {
     emit(PaymentsLoading());
+    print(
+      '🔄 PaymentBloc - Chargement paiements en attente pour groupe: ${event.groupId}',
+    );
 
     try {
       final result = await _paymentService.getPendingPayments(event.groupId);
 
-      print(
-        '📊 PaymentBloc - Résultat chargement en attente: ${result['success']}',
-      );
+      print('📊 PaymentBloc - Résultat API: ${result['success']}');
+      print('📊 PaymentBloc - Message: ${result['message']}');
+      print('📊 PaymentBloc - Données brutes: ${result['data']}');
 
       if (result['success'] == true) {
         final List<Payment> pendingPayments = [];
@@ -170,18 +174,41 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
 
         if (result['data'] != null) {
           final List<dynamic> dataList = result['data'] as List<dynamic>;
-          for (var data in dataList) {
-            final payment = Payment.fromJson(data as Map<String, dynamic>);
-            allPayments.add(payment);
-            if (payment.isPending) {
-              pendingPayments.add(payment);
+          print(
+            '📊 PaymentBloc - Nombre d\'éléments reçus: ${dataList.length}',
+          );
+
+          for (var i = 0; i < dataList.length; i++) {
+            final data = dataList[i] as Map<String, dynamic>;
+            print('📊 PaymentBloc - Élément $i: $data');
+
+            try {
+              final payment = Payment.fromJson(data);
+              print(
+                '📊 PaymentBloc - Payment créé: ${payment.id}, ${payment.payerName}, ${payment.status}',
+              );
+              allPayments.add(payment);
+              if (payment.isPending) {
+                pendingPayments.add(payment);
+              }
+            } catch (e) {
+              print('❌ PaymentBloc - Erreur création payment: $e');
             }
           }
         }
 
+        print('📊 PaymentBloc - Total payments: ${allPayments.length}');
+        print('📊 PaymentBloc - Pending payments: ${pendingPayments.length}');
+
         if (pendingPayments.isEmpty) {
+          print(
+            '📊 PaymentBloc - Aucun paiement en attente, emission PaymentsEmpty',
+          );
           emit(PaymentsEmpty('Aucun paiement en attente'));
         } else {
+          print(
+            '📊 PaymentBloc - Emission PaymentsLoaded avec ${pendingPayments.length} paiements en attente',
+          );
           emit(
             PaymentsLoaded(
               payments: allPayments,
@@ -190,10 +217,12 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
           );
         }
       } else {
+        print('❌ PaymentBloc - Erreur API: ${result['message']}');
         emit(PaymentError(result['message'] ?? 'Erreur de chargement'));
       }
     } catch (e) {
-      print('❌ PaymentBloc - Erreur chargement en attente: $e');
+      print('❌ PaymentBloc - Exception: $e');
+      print('❌ PaymentBloc - StackTrace: ${e.toString()}');
       emit(PaymentError('Erreur de chargement: $e'));
     }
   }

@@ -12,8 +12,7 @@ class PaymentService {
 
   /// Déclarer un paiement - CORRIGÉ selon votre API
   Future<Map<String, dynamic>> declarePayment({
-    required String
-    groupId, // On garde groupId pour l'interface, mais on va chercher la contribution
+    required String groupId,
     required double amount,
     required String paymentType,
     String? transactionRef,
@@ -25,40 +24,37 @@ class PaymentService {
         return {'success': false, 'message': 'Non authentifié'};
       }
 
-      // IMPORTANT: D'abord, nous devons obtenir la contribution active pour ce groupe et utilisateur
-      final contributionsResponse = await http.get(
-        Uri.parse(
-          '$_baseUrl/contributions/my-contributions?groupId=$groupId&status=PENDING',
-        ),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      print('📤 PaymentService - Début déclaration paiement groupe: $groupId');
 
-      if (contributionsResponse.statusCode != 200) {
+      // ÉTAPE 1: Obtenir les contributions en attente de l'utilisateur
+      final contributionsResult = await getMyPendingContributions(groupId);
+
+      if (contributionsResult['success'] != true) {
+        return {
+          'success': false,
+          'message':
+              contributionsResult['message'] ??
+              'Impossible de récupérer les contributions',
+        };
+      }
+
+      final contributions = contributionsResult['data'] as List<dynamic>;
+
+      if (contributions.isEmpty) {
         return {
           'success': false,
           'message': 'Aucune contribution en attente trouvée pour ce groupe',
         };
       }
 
-      final contributionsData = jsonDecode(contributionsResponse.body);
-      if (contributionsData['success'] != true ||
-          contributionsData['data'] == null ||
-          contributionsData['data'].isEmpty) {
-        return {
-          'success': false,
-          'message': 'Aucune contribution en attente trouvée',
-        };
-      }
-
       // Prendre la première contribution en attente
-      final firstContribution =
-          contributionsData['data'][0] as Map<String, dynamic>;
+      final firstContribution = contributions[0] as Map<String, dynamic>;
       final contributionId = firstContribution['id'] as String;
 
-      // Maintenant déclarer le paiement avec le bon format d'API
+      print('📤 PaymentService - Contribution trouvée: $contributionId');
+      print('📤 PaymentService - Détails: $firstContribution');
+
+      // ÉTAPE 2: Déclarer le paiement
       final body = {
         'contributionId': contributionId,
         'amount': amount,
@@ -68,10 +64,7 @@ class PaymentService {
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       };
 
-      print(
-        '📤 PaymentService - Déclaration paiement pour contribution: $contributionId',
-      );
-      print('📤 PaymentService - Body: $body');
+      print('📤 PaymentService - Body paiement: $body');
 
       final response = await http.post(
         Uri.parse('$_baseUrl/payments'),
@@ -82,8 +75,8 @@ class PaymentService {
         body: jsonEncode(body),
       );
 
-      print('📥 PaymentService - Réponse: ${response.statusCode}');
-      print('📥 PaymentService - Body: ${response.body}');
+      print('📥 PaymentService - Réponse API: ${response.statusCode}');
+      print('📥 PaymentService - Body réponse: ${response.body}');
 
       final Map<String, dynamic> data = jsonDecode(response.body);
 
@@ -209,22 +202,40 @@ class PaymentService {
         return {'success': false, 'message': 'Non authentifié', 'data': []};
       }
 
-      print(
-        '📤 PaymentService - Chargement paiements en attente groupe: $groupId',
-      );
+      final url = '$_baseUrl/payments/group/$groupId/pending';
+      print('🌐 PaymentService - URL: $url');
+      print('🌐 PaymentService - Token: ${token.substring(0, 20)}...');
 
       final response = await http.get(
-        Uri.parse('$_baseUrl/payments/group/$groupId/pending'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
 
-      print('📥 PaymentService - Réponse: ${response.statusCode}');
+      print('📥 PaymentService - Status Code: ${response.statusCode}');
+      print('📥 PaymentService - Headers: ${response.headers}');
+      print('📥 PaymentService - Body complet: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
+        print('📥 PaymentService - Data keys: ${data.keys}');
+        print('📥 PaymentService - Success: ${data['success']}');
+        print('📥 PaymentService - Message: ${data['message']}');
+
+        if (data['data'] != null) {
+          print('📥 PaymentService - Data type: ${data['data'].runtimeType}');
+          print(
+            '📥 PaymentService - Data length: ${(data['data'] as List).length}',
+          );
+
+          if ((data['data'] as List).isNotEmpty) {
+            print(
+              '📥 PaymentService - Premier élément: ${(data['data'] as List)[0]}',
+            );
+          }
+        }
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? 'Paiements en attente chargés',
@@ -348,15 +359,22 @@ class PaymentService {
         return {'success': false, 'message': 'Non authentifié', 'data': []};
       }
 
+      print(
+        '📤 PaymentService - Chargement contributions en attente groupe: $groupId',
+      );
+
       final response = await http.get(
-        Uri.parse(
-          '$_baseUrl/contributions/my-contributions?groupId=$groupId&status=PENDING',
-        ),
+        Uri.parse('$_baseUrl/contributions/group/$groupId/pending'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
+
+      print(
+        '📥 PaymentService - Réponse contributions: ${response.statusCode}',
+      );
+      print('📥 PaymentService - Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -374,6 +392,53 @@ class PaymentService {
       }
     } catch (e) {
       print('❌ PaymentService - Erreur chargement contributions: $e');
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: $e',
+        'data': [],
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> getMyPendingContributions(String groupId) async {
+    try {
+      final token = await _authService.getAccessToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Non authentifié', 'data': []};
+      }
+
+      print(
+        '📤 PaymentService - Chargement mes contributions en attente groupe: $groupId',
+      );
+
+      // Essayer d'abord avec l'endpoint spécifique si disponible
+      final response = await http.get(
+        Uri.parse(
+          '$_baseUrl/contributions/my-contributions?groupId=$groupId&status=PENDING',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print(
+        '📥 PaymentService - Réponse mes contributions: ${response.statusCode}',
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? 'Mes contributions chargées',
+          'data': data['data'] ?? [],
+        };
+      } else {
+        // Si ça ne fonctionne pas, utiliser l'endpoint général
+        return await getPendingContributions(groupId);
+      }
+    } catch (e) {
+      print('❌ PaymentService - Erreur chargement mes contributions: $e');
       return {
         'success': false,
         'message': 'Erreur de connexion: $e',

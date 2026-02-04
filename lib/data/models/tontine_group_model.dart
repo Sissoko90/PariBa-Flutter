@@ -75,3 +75,4 @@ class TontineGroupModel {
 
   // Optionnel : Ajoutez une méthode pour convertir en TontineGroup si nécessaire
 }
+// Ajoutez cette méthode à votre TontineGroupModel

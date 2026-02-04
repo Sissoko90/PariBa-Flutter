@@ -30,16 +30,58 @@ class Payment {
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
+    print('🔄 Payment.fromJson - Données reçues: $json');
     // Extraire le nom du payeur depuis l'objet payer
     String? payerName;
-    if (json['payer'] != null) {
-      final payerData = json['payer'] as Map<String, dynamic>;
-      final prenom = payerData['prenom'] as String? ?? '';
-      final nom = payerData['nom'] as String? ?? '';
-      payerName = '$prenom $nom'.trim();
-      if (payerName.isEmpty) {
-        payerName = payerData['email'] as String?;
+    Map<String, dynamic>? payerData;
+
+    try {
+      if (json['payer'] != null) {
+        if (json['payer'] is Map<String, dynamic>) {
+          payerData = json['payer'] as Map<String, dynamic>;
+        } else if (json['payer'] is Map) {
+          payerData = Map<String, dynamic>.from(json['payer'] as Map);
+        }
+
+        if (payerData != null) {
+          final prenom = payerData['prenom'] as String? ?? '';
+          final nom = payerData['nom'] as String? ?? '';
+          payerName = '$prenom $nom'.trim();
+          if (payerName.isEmpty) {
+            payerName =
+                payerData['email'] as String? ?? payerData['phone'] as String?;
+          }
+        }
+      } else if (json['person'] != null) {
+        // Essayer avec 'person' si 'payer' n'existe pas
+        final personData = json['person'] as Map<String, dynamic>;
+        final prenom = personData['prenom'] as String? ?? '';
+        final nom = personData['nom'] as String? ?? '';
+        payerName = '$prenom $nom'.trim();
       }
+
+      print('🔄 Payment.fromJson - payerName extrait: $payerName');
+    } catch (e) {
+      print('❌ Payment.fromJson - Erreur extraction payerName: $e');
+    }
+
+    // Gérer la date
+    DateTime createdAt;
+    try {
+      if (json['createdAt'] is DateTime) {
+        createdAt = json['createdAt'] as DateTime;
+      } else if (json['createdAt'] is String) {
+        createdAt = DateTime.parse(json['createdAt'] as String);
+      } else if (json['createdAt'] is int) {
+        createdAt = DateTime.fromMillisecondsSinceEpoch(
+          json['createdAt'] as int,
+        );
+      } else {
+        createdAt = DateTime.now();
+      }
+    } catch (e) {
+      print('❌ Payment.fromJson - Erreur parsing date: $e');
+      createdAt = DateTime.now();
     }
 
     return Payment(
