@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/url_helper.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
@@ -8,6 +9,8 @@ import 'edit_profile_page.dart';
 import 'change_password_page.dart';
 import 'settings_page.dart';
 import 'help_support_page.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 /// Enhanced Profile Page - Version améliorée
 class EnhancedProfilePage extends StatelessWidget {
@@ -64,23 +67,58 @@ class EnhancedProfilePage extends StatelessWidget {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  CircleAvatar(
-                                    radius: 26 + (18 * t),
-                                    backgroundColor: AppColors.white,
-                                    child: person.photo != null
-                                        ? ClipOval(
-                                            child: Image.network(
-                                              person.photo!,
-                                              width: 96,
-                                              height: 96,
-                                              fit: BoxFit.cover,
+                                  GestureDetector(
+                                    onTap: () => _changeProfilePhoto(context),
+                                    child: CircleAvatar(
+                                      radius: 26 + (18 * t),
+                                      backgroundColor: AppColors.white,
+                                      child:
+                                          person.photo != null &&
+                                              person.photo!.isNotEmpty
+                                          ? ClipOval(
+                                              child: Image.network(
+                                                UrlHelper.fixPhotoUrl(
+                                                  person.photo,
+                                                ),
+                                                width: 96,
+                                                height: 96,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) {
+                                                      // Fallback en cas d'erreur de chargement
+                                                      return Container(
+                                                        width: 96,
+                                                        height: 96,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                              color: AppColors
+                                                                  .primary
+                                                                  .withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                            ),
+                                                        child: Icon(
+                                                          Icons.person,
+                                                          size: 40,
+                                                          color:
+                                                              AppColors.primary,
+                                                        ),
+                                                      );
+                                                    },
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.person,
+                                              size: 40,
+                                              color: AppColors.primary,
                                             ),
-                                          )
-                                        : const Icon(
-                                            Icons.person,
-                                            size: 40,
-                                            color: AppColors.primary,
-                                          ),
+                                    ),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
@@ -222,7 +260,7 @@ class EnhancedProfilePage extends StatelessWidget {
                       ),
                     ]),
 
-                    const SizedBox(height: 16),
+                    /*const SizedBox(height: 16),
 
                     // Préférences
                     _buildSection('Préférences', Icons.tune, [
@@ -252,8 +290,7 @@ class EnhancedProfilePage extends StatelessWidget {
                           );
                         },
                       ),
-                    ]),
-
+                    ]),*/
                     const SizedBox(height: 16),
 
                     // Support
@@ -622,6 +659,96 @@ class EnhancedProfilePage extends StatelessWidget {
       ),
       onTap: onTap,
     );
+  }
+  // Ajoutez cette méthode dans la classe EnhancedProfilePage, après _buildActionTile
+
+  Future<void> _changeProfilePhoto(BuildContext context) async {
+    final picker = ImagePicker();
+
+    // Afficher un dialog pour choisir la source
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Changer la photo'),
+          content: const Text('Choisissez une source'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, ImageSource.camera),
+              child: const Text('Appareil photo'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, ImageSource.gallery),
+              child: const Text('Galerie'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    try {
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+
+      if (image == null) return;
+
+      // Afficher un indicateur de chargement
+      if (!context.mounted) return;
+
+      // Sauvegarder le contexte pour une utilisation ultérieure
+      final scaffoldContext = context;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      final file = File(image.path);
+
+      // Dispatcher l'événement
+      context.read<AuthBloc>().add(UploadProfilePhotoEvent(file: file));
+
+      // Fermer l'indicateur de chargement
+      if (context.mounted) {
+        // Fermer le dialog de chargement
+        Navigator.of(context).pop();
+
+        // Afficher un message de succès
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo de profil mise à jour avec succès'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        // Essayer de fermer le dialog de chargement s'il est ouvert
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showLogoutDialog(BuildContext context) {

@@ -28,6 +28,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterEvent>(_onRegister);
     on<LogoutEvent>(_onLogout);
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
+    on<UploadProfilePhotoEvent>(_onUploadProfilePhoto);
   }
 
   /// Handle Login
@@ -142,6 +143,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } else {
       await authService.clearTokens();
       emit(const Unauthenticated());
+    }
+  }
+
+  Future<void> _onUploadProfilePhoto(
+    UploadProfilePhotoEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    print('🔵 AuthBloc - Début upload photo de profil');
+
+    try {
+      // Appel au repository pour uploader la photo
+      final result = await authRepository.uploadProfilePhoto(event.file);
+
+      result.fold(
+        (failure) {
+          print('❌ AuthBloc - Échec upload photo: ${failure.message}');
+          emit(AuthError(failure.message));
+        },
+        (updatedPerson) {
+          print('✅ AuthBloc - Photo uploadée avec succès');
+
+          // Mettre à jour l'état avec la nouvelle personne
+          if (state is Authenticated) {
+            final currentState = state as Authenticated;
+            emit(
+              Authenticated(
+                person: updatedPerson,
+                accessToken: currentState.accessToken,
+              ),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      print('❌ AuthBloc - Erreur upload photo: $e');
+      emit(AuthError('Erreur lors de l\'upload: ${e.toString()}'));
     }
   }
 
