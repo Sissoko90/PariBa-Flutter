@@ -51,24 +51,21 @@ class _RegisterPageState extends State<RegisterPage> {
       }
 
       context.read<AuthBloc>().add(
-            RegisterEvent(
-              prenom: _prenomController.text.trim(),
-              nom: _nomController.text.trim(),
-              email: _emailController.text.trim(),
-              phone: _phoneController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
+        RegisterEvent(
+          prenom: _prenomController.text.trim(),
+          nom: _nomController.text.trim(),
+          email: _emailController.text.trim(),
+          phone: _phoneController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Créer un compte'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Créer un compte'), elevation: 0),
       body: SafeArea(
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
@@ -77,10 +74,29 @@ class _RegisterPageState extends State<RegisterPage> {
                 SnackBar(
                   content: Text(state.message),
                   backgroundColor: AppColors.error,
+                  duration: const Duration(seconds: 5),
+                  behavior: SnackBarBehavior.floating,
+                  action: SnackBarAction(
+                    label: 'OK',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    },
+                  ),
                 ),
               );
             } else if (state is Authenticated) {
-              print('✅ RegisterPage - Utilisateur authentifié, retour à la racine');
+              print(
+                '✅ RegisterPage - Utilisateur authentifié, retour à la racine',
+              );
+              // Afficher un message de succès
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('✅ Inscription réussie ! Bienvenue sur PariBa'),
+                  backgroundColor: AppColors.success,
+                  duration: Duration(seconds: 2),
+                ),
+              );
               // Retourner à la racine (AuthWrapper) qui détectera l'état Authenticated
               Navigator.of(context).popUntil((route) => route.isFirst);
             }
@@ -101,28 +117,56 @@ class _RegisterPageState extends State<RegisterPage> {
                       size: 80,
                       color: AppColors.primary,
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Title
                     Text(
                       'Rejoignez PariBa',
                       style: Theme.of(context).textTheme.headlineMedium,
                       textAlign: TextAlign.center,
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     Text(
                       'Créez votre compte pour commencer',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                        color: AppColors.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
-                    
+
+                    const SizedBox(height: 8),
+
+                    // Info sur les champs requis
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 20,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Le mot de passe doit contenir au moins 8 caractères',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     const SizedBox(height: 32),
-                    
+
                     // Prénom Field
                     CustomTextField(
                       controller: _prenomController,
@@ -130,12 +174,12 @@ class _RegisterPageState extends State<RegisterPage> {
                       hint: 'Votre prénom',
                       prefixIcon: Icons.person_outlined,
                       validator: (value) =>
-                          Validators.required(value, fieldName: 'Le prénom'),
+                          Validators.name(value, fieldName: 'Le prénom'),
                       enabled: !isLoading,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Nom Field
                     CustomTextField(
                       controller: _nomController,
@@ -143,25 +187,25 @@ class _RegisterPageState extends State<RegisterPage> {
                       hint: 'Votre nom',
                       prefixIcon: Icons.person_outlined,
                       validator: (value) =>
-                          Validators.required(value, fieldName: 'Le nom'),
+                          Validators.name(value, fieldName: 'Le nom'),
                       enabled: !isLoading,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
-                    // Email Field
+
+                    // Email Field (optionnel)
                     CustomTextField(
                       controller: _emailController,
-                      label: 'Email',
+                      label: 'Email (optionnel)',
                       hint: 'votre@email.com',
                       keyboardType: TextInputType.emailAddress,
                       prefixIcon: Icons.email_outlined,
                       validator: Validators.email,
                       enabled: !isLoading,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Phone Field
                     CustomTextField(
                       controller: _phoneController,
@@ -172,9 +216,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       validator: Validators.phone,
                       enabled: !isLoading,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Password Field
                     CustomTextField(
                       controller: _passwordController,
@@ -197,9 +241,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       validator: Validators.password,
                       enabled: !isLoading,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Confirm Password Field
                     CustomTextField(
                       controller: _confirmPasswordController,
@@ -219,22 +263,24 @@ class _RegisterPageState extends State<RegisterPage> {
                           });
                         },
                       ),
-                      validator: (value) =>
-                          Validators.required(value, fieldName: 'La confirmation'),
+                      validator: (value) => Validators.required(
+                        value,
+                        fieldName: 'La confirmation',
+                      ),
                       enabled: !isLoading,
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Register Button
                     CustomButton(
                       text: 'S\'inscrire',
                       onPressed: isLoading ? null : _handleRegister,
                       isLoading: isLoading,
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Login Link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

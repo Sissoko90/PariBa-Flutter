@@ -18,7 +18,7 @@ class TontineGroupMapper {
       latePenaltyAmount: entity.latePenaltyAmount,
       graceDays: entity.graceDays,
       creatorPersonId: entity.creatorPersonId,
-      role: entity.role,
+      currentUserRole: entity.currentUserRole,
       status: entity.status,
     );
   }

@@ -2,12 +2,13 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../domain/entities/invitation.dart';
+import '../constants/api_constants.dart';
 import 'auth_service.dart';
+import '../../domain/entities/invitation.dart';
 import '../../di/injection.dart' as di;
 
 class InvitationService {
-  static const String _baseUrl = 'http://192.168.100.57:8082/api/v1';
+  static String get _baseUrl => ApiConstants.baseUrl;
   final http.Client client;
   AuthService? _authService;
 

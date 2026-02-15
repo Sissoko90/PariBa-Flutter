@@ -59,7 +59,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       await authService.saveUserInfo(
         authResult.person.id,
-        authResult.person.email,
+        authResult.person.email ?? authResult.person.phone ?? '',
       );
 
       // Enregistrer le token FCM au backend
@@ -116,7 +116,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       await authService.saveUserInfo(
         authResult.person.id,
-        authResult.person.email,
+        authResult.person.email ?? authResult.person.phone ?? '',
       );
 
       print('🚀 AuthBloc - Émission état Authenticated');
@@ -167,7 +167,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             emit(const Unauthenticated());
           },
           (person) {
-            print('✅ AuthBloc - Utilisateur récupéré: ${person.email}');
+            print(
+              '✅ AuthBloc - Utilisateur récupéré: ${person.email ?? person.phone ?? person.id}',
+            );
             emit(Authenticated(person: person, accessToken: token));
           },
         );

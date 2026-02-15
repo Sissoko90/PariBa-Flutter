@@ -7,8 +7,8 @@ class Person extends Equatable {
   final DateTime? updatedAt;
   final String prenom;
   final String nom;
-  final String email;
-  final String phone;
+  final String? email;
+  final String? phone;
   final String? photo;
   final String role;
 
@@ -18,8 +18,8 @@ class Person extends Equatable {
     this.updatedAt,
     required this.prenom,
     required this.nom,
-    required this.email,
-    required this.phone,
+    this.email,
+    this.phone,
     this.photo,
     required this.role,
   });
@@ -28,14 +28,14 @@ class Person extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        createdAt,
-        updatedAt,
-        prenom,
-        nom,
-        email,
-        phone,
-        photo,
-        role,
-      ];
+    id,
+    createdAt,
+    updatedAt,
+    prenom,
+    nom,
+    email,
+    phone,
+    photo,
+    role,
+  ];
 }

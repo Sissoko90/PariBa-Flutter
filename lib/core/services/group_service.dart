@@ -4,9 +4,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 import '../../di/injection.dart' as di; // IMPORT AJOUTÉ
+import '../constants/api_constants.dart';
 
 class GroupService {
-  static const String _baseUrl = 'http://192.168.100.57:8082/api/v1';
+  static String get _baseUrl => ApiConstants.baseUrl;
   final AuthService _authService;
 
   // Option 1: Constructeur avec injection
@@ -141,6 +142,98 @@ class GroupService {
     } catch (e) {
       print('❌ GroupService - Erreur création groupe: $e');
       return {'success': false, 'message': 'Erreur de connexion: $e'};
+    }
+  }
+
+  /// Rejoindre un groupe via code d'invitation
+  Future<Map<String, dynamic>> joinGroup(String invitationCode) async {
+    try {
+      final token = await _authService.getAccessToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vous devez être connecté pour rejoindre un groupe',
+        };
+      }
+
+      print('📤 GroupService - Rejoindre groupe avec code: $invitationCode');
+
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/groups/join'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'invitationCode': invitationCode}),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              throw Exception('TIMEOUT');
+            },
+          );
+
+      print('📥 GroupService - Réponse: ${response.statusCode}');
+      print('📥 GroupService - Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Demande envoyée avec succès',
+          'data': data['data'],
+        };
+      } else if (response.statusCode == 404) {
+        return {
+          'success': false,
+          'message': 'Code d\'invitation invalide ou expiré',
+        };
+      } else if (response.statusCode == 409) {
+        return {
+          'success': false,
+          'message': 'Vous êtes déjà membre de ce groupe',
+        };
+      } else {
+        try {
+          final Map<String, dynamic> data = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': data['message'] ?? 'Une erreur est survenue',
+          };
+        } catch (_) {
+          return {'success': false, 'message': 'Une erreur est survenue'};
+        }
+      }
+    } catch (e) {
+      print('❌ GroupService - Erreur rejoindre groupe: $e');
+
+      // Messages d'erreur conviviaux
+      if (e.toString().contains('TIMEOUT') ||
+          e.toString().contains('Connection timed out')) {
+        return {
+          'success': false,
+          'message':
+              'Le serveur ne répond pas. Vérifiez votre connexion internet.',
+        };
+      } else if (e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup')) {
+        return {
+          'success': false,
+          'message':
+              'Impossible de se connecter au serveur. Vérifiez votre connexion.',
+        };
+      } else if (e.toString().contains('FormatException')) {
+        return {
+          'success': false,
+          'message': 'Erreur de communication avec le serveur.',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Une erreur inattendue est survenue. Veuillez réessayer.',
+        };
+      }
     }
   }
 

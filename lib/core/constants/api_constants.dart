@@ -6,8 +6,8 @@ class ApiConstants {
   /// Base URL for API
   /// Pour Android Emulator, utilisez 10.0.2.2 au lieu de localhost
   /// Pour iOS Simulator, utilisez localhost ou votre IP
-  static const String baseUrl = 'http://192.168.100.57:8082/api/v1';
-
+  //static const String baseUrl = 'http://10.10.10.104:8085/api/v1';
+  static const String baseUrl = 'http://192.168.100.99:8085/api/v1';
   // Auth Endpoints
   static const String login = '/auth/login';
   static const String register = '/auth/register';
@@ -55,6 +55,20 @@ class ApiConstants {
   static String paymentsByPerson(String personId) =>
       '/payments/person/$personId';
   static String verifyPayment(String id) => '/payments/$id/verify';
+  static String paymentHistory(String groupId) =>
+      '/payments/history/group/$groupId';
+  static String validatePayment(String paymentId) =>
+      '/payments/$paymentId/validate';
+  static String pendingPayments(String groupId) =>
+      '/payments/group/$groupId/pending';
+
+  // Tours Endpoints
+  static const String tours = '/tours';
+  static String tourById(String id) => '/tours/$id';
+  static String toursByGroup(String groupId) => '/tours/group/$groupId';
+  static String currentTour(String groupId) => '/tours/group/$groupId/current';
+  static String nextTour(String groupId) => '/tours/group/$groupId/next';
+  static const String generateTours = '/tours/generate';
 
   // Contributions Endpoints
   static const String contributions = '/contributions';

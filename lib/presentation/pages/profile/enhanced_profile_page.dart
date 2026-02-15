@@ -124,7 +124,7 @@ class EnhancedProfilePage extends StatelessWidget {
                             const SizedBox(height: 4),
                             // Email
                             Text(
-                              person.email,
+                              person.email ?? person.phone ?? 'Non renseigné',
                               style: TextStyle(
                                 color: AppColors.white.withOpacity(0.9),
                                 fontSize: 14,
@@ -199,13 +199,13 @@ class EnhancedProfilePage extends StatelessWidget {
                       _buildInfoTile(
                         Icons.phone_outlined,
                         'Téléphone',
-                        person.phone,
+                        person.phone ?? 'Non renseigné',
                       ),
                       const Divider(height: 1),
                       _buildInfoTile(
                         Icons.email_outlined,
                         'Email',
-                        person.email,
+                        person.email ?? 'Non renseigné',
                       ),
                     ]),
 

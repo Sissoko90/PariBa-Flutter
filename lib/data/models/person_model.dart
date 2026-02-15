@@ -9,8 +9,8 @@ class PersonModel {
   final DateTime? updatedAt;
   final String prenom;
   final String nom;
-  final String email;
-  final String phone;
+  final String? email;
+  final String? phone;
   final String? photo;
   final String role; // SUPERADMIN, ADMIN, USER
 
@@ -20,8 +20,8 @@ class PersonModel {
     this.updatedAt,
     required this.prenom,
     required this.nom,
-    required this.email,
-    required this.phone,
+    this.email,
+    this.phone,
     this.photo,
     required this.role,
   });

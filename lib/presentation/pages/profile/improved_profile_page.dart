@@ -83,7 +83,7 @@ class ImprovedProfilePage extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          person.email,
+                          person.email ?? person.phone ?? 'Non renseigné',
                           style: TextStyle(
                             color: AppColors.white.withOpacity(0.9),
                             fontSize: 14,
@@ -107,145 +107,121 @@ class ImprovedProfilePage extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     // Informations personnelles
-                    _buildSection(
-                      'Informations personnelles',
-                      [
-                        _buildInfoTile(
-                          Icons.person_outline,
-                          'Nom complet',
-                          person.fullName,
-                        ),
-                        _buildInfoTile(
-                          Icons.phone_outlined,
-                          'Téléphone',
-                          person.phone,
-                        ),
-                        _buildInfoTile(
-                          Icons.badge_outlined,
-                          'Rôle',
-                          person.role,
-                        ),
-                      ],
-                    ),
+                    _buildSection('Informations personnelles', [
+                      _buildInfoTile(
+                        Icons.person_outline,
+                        'Nom complet',
+                        person.fullName,
+                      ),
+                      _buildInfoTile(
+                        Icons.phone_outlined,
+                        'Téléphone',
+                        person.phone ?? 'Non renseigné',
+                      ),
+                      _buildInfoTile(Icons.badge_outlined, 'Rôle', person.role),
+                    ]),
 
                     // Compte
-                    _buildSection(
-                      'Compte',
-                      [
-                        _buildActionTile(
+                    _buildSection('Compte', [
+                      _buildActionTile(
+                        context,
+                        Icons.edit_outlined,
+                        'Modifier le profil',
+                        () => Navigator.push(
                           context,
-                          Icons.edit_outlined,
-                          'Modifier le profil',
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const EditProfilePage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const EditProfilePage(),
                           ),
                         ),
-                        _buildActionTile(
+                      ),
+                      _buildActionTile(
+                        context,
+                        Icons.lock_outlined,
+                        'Changer le mot de passe',
+                        () => Navigator.push(
                           context,
-                          Icons.lock_outlined,
-                          'Changer le mot de passe',
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ChangePasswordPage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const ChangePasswordPage(),
                           ),
                         ),
-                        _buildActionTile(
-                          context,
-                          Icons.security_outlined,
-                          'Sécurité et confidentialité',
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('En développement'),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      ),
+                      _buildActionTile(
+                        context,
+                        Icons.security_outlined,
+                        'Sécurité et confidentialité',
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('En développement')),
+                          );
+                        },
+                      ),
+                    ]),
 
                     // Préférences
-                    _buildSection(
-                      'Préférences',
-                      [
-                        _buildActionTile(
+                    _buildSection('Préférences', [
+                      _buildActionTile(
+                        context,
+                        Icons.settings_outlined,
+                        'Paramètres',
+                        () => Navigator.push(
                           context,
-                          Icons.settings_outlined,
-                          'Paramètres',
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SettingsPage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsPage(),
                           ),
                         ),
-                        _buildActionTile(
-                          context,
-                          Icons.notifications_outlined,
-                          'Notifications',
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('En développement'),
-                              ),
-                            );
-                          },
-                        ),
-                        _buildActionTile(
-                          context,
-                          Icons.language_outlined,
-                          'Langue',
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('En développement'),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      ),
+                      _buildActionTile(
+                        context,
+                        Icons.notifications_outlined,
+                        'Notifications',
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('En développement')),
+                          );
+                        },
+                      ),
+                      _buildActionTile(
+                        context,
+                        Icons.language_outlined,
+                        'Langue',
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('En développement')),
+                          );
+                        },
+                      ),
+                    ]),
 
                     // Support
-                    _buildSection(
-                      'Support',
-                      [
-                        _buildActionTile(
+                    _buildSection('Support', [
+                      _buildActionTile(
+                        context,
+                        Icons.help_outline,
+                        'Aide & Support',
+                        () => Navigator.push(
                           context,
-                          Icons.help_outline,
-                          'Aide & Support',
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const HelpSupportPage(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const HelpSupportPage(),
                           ),
                         ),
-                        _buildActionTile(
-                          context,
-                          Icons.info_outline,
-                          'À propos',
-                          () => _showAboutDialog(context),
-                        ),
-                        _buildActionTile(
-                          context,
-                          Icons.privacy_tip_outlined,
-                          'Politique de confidentialité',
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('En développement'),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      ),
+                      _buildActionTile(
+                        context,
+                        Icons.info_outline,
+                        'À propos',
+                        () => _showAboutDialog(context),
+                      ),
+                      _buildActionTile(
+                        context,
+                        Icons.privacy_tip_outlined,
+                        'Politique de confidentialité',
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('En développement')),
+                          );
+                        },
+                      ),
+                    ]),
 
                     const SizedBox(height: 16),
 
@@ -303,17 +279,11 @@ class ImprovedProfilePage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Expanded(
-            child: _buildStatCard('5', 'Groupes', Icons.group),
-          ),
+          Expanded(child: _buildStatCard('5', 'Groupes', Icons.group)),
           const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard('12', 'Paiements', Icons.payment),
-          ),
+          Expanded(child: _buildStatCard('12', 'Paiements', Icons.payment)),
           const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard('3', 'En attente', Icons.pending),
-          ),
+          Expanded(child: _buildStatCard('3', 'En attente', Icons.pending)),
         ],
       ),
     );
@@ -378,17 +348,11 @@ class ImprovedProfilePage extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary),
       title: Text(
         label,
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textSecondary,
-        ),
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
       subtitle: Text(
         value,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -444,10 +408,7 @@ class ImprovedProfilePage extends StatelessWidget {
           children: [
             Text(
               'PariBa - Gestion de Tontines',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             SizedBox(height: 8),
             Text('Version 1.0.0'),
@@ -458,10 +419,7 @@ class ImprovedProfilePage extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               '© 2024 PariBa. Tous droits réservés.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
         ),

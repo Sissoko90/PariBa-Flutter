@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/group_permissions.dart';
 import '../../../data/models/tontine_group_model.dart';
 import '../../blocs/membership/membership_bloc.dart';
 import '../../blocs/membership/membership_event.dart';
@@ -20,6 +21,18 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
   @override
   void initState() {
     super.initState();
+    // 🔍 DEBUG: Vérifier currentUserRole
+    print('🔍 GroupMembersPage - Groupe: ${widget.group.nom}');
+    print(
+      '🔍 GroupMembersPage - currentUserRole: ${widget.group.currentUserRole}',
+    );
+    print(
+      '🔍 GroupMembersPage - canInviteMembers: ${GroupPermissions.canInviteMembers(widget.group.currentUserRole)}',
+    );
+    print(
+      '🔍 GroupMembersPage - canManageMembers: ${GroupPermissions.canManageMembers(widget.group.currentUserRole)}',
+    );
+
     // Charger les membres du groupe
     context.read<MembershipBloc>().add(LoadGroupMembersEvent(widget.group.id));
   }
@@ -30,11 +43,13 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
       appBar: AppBar(
         title: const Text('Membres du groupe'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            onPressed: () => _showInviteMemberDialog(context),
-            tooltip: 'Inviter',
-          ),
+          // Inviter - ADMIN uniquement
+          if (GroupPermissions.canInviteMembers(widget.group.currentUserRole))
+            IconButton(
+              icon: const Icon(Icons.person_add),
+              onPressed: () => _showInviteMemberDialog(context),
+              tooltip: 'Inviter',
+            ),
         ],
       ),
       body: BlocBuilder<MembershipBloc, MembershipState>(
@@ -112,11 +127,14 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showInviteMemberDialog(context),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Inviter'),
-      ),
+      floatingActionButton:
+          GroupPermissions.canInviteMembers(widget.group.currentUserRole)
+          ? FloatingActionButton.extended(
+              onPressed: () => _showInviteMemberDialog(context),
+              icon: const Icon(Icons.person_add),
+              label: const Text('Inviter'),
+            )
+          : null,
     );
   }
 
@@ -245,50 +263,52 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
             ),
           ],
         ),
-        trailing: role != 'ADMIN'
-            ? PopupMenuButton(
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'promote',
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_upward, size: 18),
-                        SizedBox(width: 8),
-                        Text('Promouvoir'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'remove',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.person_remove,
-                          size: 18,
-                          color: AppColors.error,
+        trailing: role == 'ADMIN'
+            ? const Icon(Icons.verified, color: AppColors.secondary)
+            : (GroupPermissions.canManageMembers(widget.group.currentUserRole)
+                  ? PopupMenuButton(
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'promote',
+                          child: Row(
+                            children: [
+                              Icon(Icons.arrow_upward, size: 18),
+                              SizedBox(width: 8),
+                              Text('Promouvoir'),
+                            ],
+                          ),
                         ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Retirer',
-                          style: TextStyle(color: AppColors.error),
+                        const PopupMenuItem(
+                          value: 'remove',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.person_remove,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Retirer',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-                onSelected: (value) {
-                  if (value == 'remove') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Retirer $fullName')),
-                    );
-                  } else if (value == 'promote') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Promouvoir $fullName')),
-                    );
-                  }
-                },
-              )
-            : const Icon(Icons.verified, color: AppColors.secondary),
+                      onSelected: (value) {
+                        if (value == 'remove') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Retirer $fullName')),
+                          );
+                        } else if (value == 'promote') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Promouvoir $fullName')),
+                          );
+                        }
+                      },
+                    )
+                  : null),
       ),
     );
   }

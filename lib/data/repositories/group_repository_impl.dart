@@ -111,7 +111,8 @@ class GroupRepositoryImpl implements GroupRepository {
       if (rotationMode != null) data['rotationMode'] = rotationMode;
       if (totalTours != null) data['totalTours'] = totalTours;
       if (startDate != null) data['startDate'] = startDate;
-      if (latePenaltyAmount != null) data['latePenaltyAmount'] = latePenaltyAmount;
+      if (latePenaltyAmount != null)
+        data['latePenaltyAmount'] = latePenaltyAmount;
       if (graceDays != null) data['graceDays'] = graceDays;
 
       final model = await remoteDataSource.updateGroup(groupId, data);
@@ -158,7 +159,7 @@ class GroupRepositoryImpl implements GroupRepository {
       if (phone == null) {
         return const Left(ValidationFailure('Téléphone ou email requis'));
       }
-      
+
       await invitationDataSource.inviteMember(groupId, phone, null);
       return const Right(null);
     } on ServerException catch (e) {
@@ -202,6 +203,9 @@ class GroupRepositoryImpl implements GroupRepository {
       latePenaltyAmount: model.latePenaltyAmount,
       graceDays: model.graceDays,
       creatorPersonId: model.creatorPersonId,
+      currentUserRole:
+          model.currentUserRole, //  AJOUTÉ - pour ne pas perdre le rôle !
+      status: model.status ?? 'active',
     );
   }
 }

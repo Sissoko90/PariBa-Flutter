@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/group_service.dart';
+import '../../../di/injection.dart' as di;
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../../blocs/group/group_bloc.dart';
+import '../../blocs/group/group_event.dart';
+import 'qr_scanner_page.dart';
 
 /// Join Group Page - Rejoindre un groupe via code d'invitation
 class JoinGroupPage extends StatefulWidget {
@@ -14,6 +20,7 @@ class JoinGroupPage extends StatefulWidget {
 class _JoinGroupPageState extends State<JoinGroupPage> {
   final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
+  final _groupService = di.sl<GroupService>();
   bool _isLoading = false;
 
   @override
@@ -22,41 +29,85 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
     super.dispose();
   }
 
-  void _handleJoinGroup() {
+  Future<void> _handleJoinGroup() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
-      // TODO: Implement join group logic
-      Future.delayed(const Duration(seconds: 2), () {
+
+      try {
+        final result = await _groupService.joinGroup(
+          _codeController.text.trim(),
+        );
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          if (result['success'] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  result['message'] ?? 'Demande envoyée avec succès !',
+                ),
+                backgroundColor: AppColors.success,
+              ),
+            );
+
+            // Recharger la liste des groupes
+            context.read<GroupBloc>().add(const LoadGroupsEvent());
+
+            Navigator.pop(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'Erreur lors de la demande'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+        }
+      } catch (e) {
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Demande envoyée avec succès !'),
-              backgroundColor: AppColors.success,
+            SnackBar(
+              content: Text('Erreur: $e'),
+              backgroundColor: AppColors.error,
             ),
           );
-          Navigator.pop(context);
         }
-      });
+      }
     }
   }
 
-  void _scanQRCode() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Scanner QR Code - En développement'),
-      ),
-    );
+  Future<void> _scanQRCode() async {
+    try {
+      final scannedCode = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(builder: (context) => const QRScannerPage()),
+      );
+
+      if (scannedCode != null && scannedCode.isNotEmpty && mounted) {
+        // Remplir le champ avec le code scanné
+        _codeController.text = scannedCode;
+
+        // Rejoindre automatiquement le groupe
+        _handleJoinGroup();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors du scan: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rejoindre un Groupe'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Rejoindre un Groupe'), elevation: 0),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -83,10 +134,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
               // Title
               const Text(
                 'Rejoindre un Groupe',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
 
@@ -94,9 +142,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
 
               const Text(
                 'Entrez le code d\'invitation ou scannez le QR code',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
 
@@ -168,9 +214,7 @@ class _JoinGroupPageState extends State<JoinGroupPage> {
                 decoration: BoxDecoration(
                   color: AppColors.info.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.info.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.info.withOpacity(0.3)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

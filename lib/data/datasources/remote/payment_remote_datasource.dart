@@ -11,9 +11,12 @@ abstract class PaymentRemoteDataSource {
     String? externalRef,
   });
   Future<Map<String, dynamic>> getPaymentById(String id);
-  Future<List<Map<String, dynamic>>> getPaymentsByContribution(String contributionId);
+  Future<List<Map<String, dynamic>>> getPaymentsByContribution(
+    String contributionId,
+  );
   Future<List<Map<String, dynamic>>> getPaymentsByPerson(String personId);
   Future<void> verifyPayment(String id);
+  Future<List<Map<String, dynamic>>> getPaymentHistory(String groupId);
 }
 
 class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
@@ -52,9 +55,7 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   @override
   Future<Map<String, dynamic>> getPaymentById(String id) async {
     try {
-      final response = await dioClient.get(
-        ApiConstants.paymentById(id),
-      );
+      final response = await dioClient.get(ApiConstants.paymentById(id));
 
       if (response.data['success'] == true) {
         return response.data['data'];
@@ -86,7 +87,9 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getPaymentsByPerson(String personId) async {
+  Future<List<Map<String, dynamic>>> getPaymentsByPerson(
+    String personId,
+  ) async {
     try {
       final response = await dioClient.get(
         ApiConstants.paymentsByPerson(personId),
@@ -105,15 +108,30 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   @override
   Future<void> verifyPayment(String id) async {
     try {
-      final response = await dioClient.post(
-        ApiConstants.verifyPayment(id),
-      );
+      final response = await dioClient.post(ApiConstants.verifyPayment(id));
 
       if (response.data['success'] != true) {
         throw Exception(response.data['message'] ?? 'Erreur');
       }
     } on DioException catch (e) {
       throw Exception('Erreur de vérification: ${e.message}');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getPaymentHistory(String groupId) async {
+    try {
+      final response = await dioClient.get(
+        ApiConstants.paymentHistory(groupId),
+      );
+
+      if (response.data['success'] == true) {
+        return List<Map<String, dynamic>>.from(response.data['data']);
+      } else {
+        throw Exception(response.data['message'] ?? 'Erreur');
+      }
+    } on DioException catch (e) {
+      throw Exception('Erreur de récupération de l\'historique: ${e.message}');
     }
   }
 }

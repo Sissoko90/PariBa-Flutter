@@ -4,16 +4,20 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/services/firebase_messaging_service.dart';
+import '../../../core/services/payment_service.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../blocs/group/group_bloc.dart';
 import '../../blocs/group/group_event.dart';
 import '../../blocs/group/group_state.dart';
 import '../groups/groups_list_page.dart';
+import '../groups/group_details_page.dart';
 import '../groups/create_group_page.dart';
 import '../groups/join_group_page.dart';
 import '../profile/enhanced_profile_page.dart';
 import '../notifications/enhanced_notifications_page.dart';
+import '../payments/my_payments_history_page.dart';
+import '../payments/upcoming_payments_page.dart';
 import '../../blocs/notification/notification_bloc.dart';
 import '../../blocs/notification/notification_event.dart';
 import '../../blocs/notification/notification_state.dart';
@@ -31,13 +35,26 @@ class ImprovedDashboardPage extends StatefulWidget {
 
 class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
   int _selectedIndex = 0;
+  int _pendingPaymentsCount = 0;
+  final _paymentService = di.sl<PaymentService>();
 
   @override
   void initState() {
     super.initState();
-    context.read<GroupBloc>().add(const LoadGroupsEvent());
-    context.read<NotificationBloc>().add(const LoadNotificationsEvent());
+    // Charger les données après la construction du widget
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<GroupBloc>().add(const LoadGroupsEvent());
+      context.read<NotificationBloc>().add(const LoadNotificationsEvent());
+    });
     _setupNotificationListener();
+    _loadPendingPaymentsCount();
+  }
+
+  Future<void> _loadPendingPaymentsCount() async {
+    final count = await _paymentService.countMyPendingPayments();
+    if (mounted) {
+      setState(() => _pendingPaymentsCount = count);
+    }
   }
 
   /// Configurer l'écoute des nouvelles notifications
@@ -86,7 +103,6 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
               _buildQuickStats(),
               _buildQuickActions(),
               _buildRecentActivity(),
-              _buildUpcomingPayments(),
               const SizedBox(height: 100),
             ],
           ),
@@ -267,13 +283,11 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
         int totalGroups = 0;
         int activeGroups = 0;
         double totalAmount = 0;
-        int pendingPayments = 0;
 
         if (state is GroupsLoaded) {
           totalGroups = state.groups.length;
           activeGroups = state.groups.length;
           totalAmount = state.groups.fold(0, (sum, g) => sum + g.montant);
-          pendingPayments = 2; // Mock data
         }
 
         return Container(
@@ -289,12 +303,33 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildStatCard(
-                      'Groupes',
-                      totalGroups.toString(),
-                      Icons.group,
-                      AppColors.primary,
-                      'Total',
+                    child: GestureDetector(
+                      onTap: () {
+                        if (state is GroupsLoaded && state.groups.isNotEmpty) {
+                          final firstGroup = state.groups.first;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  GroupDetailsPage(group: firstGroup),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Aucun groupe disponible'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      },
+                      child: _buildStatCard(
+                        'Groupes',
+                        totalGroups.toString(),
+                        Icons.group,
+                        AppColors.primary,
+                        'Total',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -323,12 +358,22 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatCard(
-                      'En attente',
-                      pendingPayments.toString(),
-                      Icons.pending_actions,
-                      AppColors.warning,
-                      'Paiements',
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const UpcomingPaymentsPage(),
+                          ),
+                        );
+                      },
+                      child: _buildStatCard(
+                        'À venir',
+                        _pendingPaymentsCount.toString(),
+                        Icons.pending_actions,
+                        AppColors.warning,
+                        'Paiements',
+                      ),
                     ),
                   ),
                 ],
@@ -440,11 +485,12 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
                   'Mes\nPaiements',
                   Icons.payment,
                   AppColors.success,
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('En développement')),
-                    );
-                  },
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MyPaymentsHistoryPage(),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -566,49 +612,6 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage> {
         }
         return const SizedBox.shrink();
       },
-    );
-  }
-
-  Widget _buildUpcomingPayments() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Paiements à venir',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.warning.withOpacity(0.1),
-                child: const Icon(Icons.schedule, color: AppColors.warning),
-              ),
-              title: const Text('Tontine Famille'),
-              subtitle: const Text('Échéance: 25 Nov 2025'),
-              trailing: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    CurrencyFormatter.format(50000),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const Text(
-                    'Dans 3 jours',
-                    style: TextStyle(fontSize: 11, color: AppColors.warning),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

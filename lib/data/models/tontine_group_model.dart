@@ -17,7 +17,8 @@ class TontineGroupModel {
   final double? latePenaltyAmount;
   final int? graceDays;
   final String creatorPersonId;
-  final String? role; // AJOUTEZ CETTE PROPRIÉTÉ
+  final String?
+  currentUserRole; // Rôle de l'utilisateur actuel dans ce groupe (ADMIN, MEMBER)
   final String? status;
 
   TontineGroupModel({
@@ -34,11 +35,20 @@ class TontineGroupModel {
     this.latePenaltyAmount,
     this.graceDays,
     required this.creatorPersonId,
-    this.role, // AJOUTEZ ICI
+    this.currentUserRole,
     this.status = 'active',
   });
 
   factory TontineGroupModel.fromJson(Map<String, dynamic> json) {
+    // DEBUG: Afficher le JSON complet
+    print(' TontineGroupModel.fromJson - JSON complet: $json');
+    print(
+      ' TontineGroupModel.fromJson - currentUserRole brut: ${json['currentUserRole']}',
+    );
+    print(
+      ' TontineGroupModel.fromJson - Type: ${json['currentUserRole'].runtimeType}',
+    );
+
     // Le backend retourne 'creator' (objet) au lieu de 'creatorPersonId' (String)
     // On extrait l'ID du créateur si c'est un objet
     String creatorId;
@@ -49,6 +59,15 @@ class TontineGroupModel {
     } else {
       creatorId = '';
     }
+
+    // Gérer currentUserRole qui peut être String ou null
+    String? currentUserRole;
+    if (json['currentUserRole'] != null) {
+      currentUserRole = json['currentUserRole'].toString();
+    }
+    print(
+      ' TontineGroupModel.fromJson - currentUserRole final: $currentUserRole',
+    );
 
     return TontineGroupModel(
       id: json['id'] as String,
@@ -66,8 +85,8 @@ class TontineGroupModel {
       latePenaltyAmount: (json['latePenaltyAmount'] as num?)?.toDouble(),
       graceDays: (json['graceDays'] as num?)?.toInt(),
       creatorPersonId: creatorId,
-      role: json['role'] as String?, // AJOUTEZ ICI
-      status: json['status'] as String? ?? 'active', // AJOUTEZ ICI
+      currentUserRole: currentUserRole,
+      status: json['status'] as String? ?? 'active',
     );
   }
 

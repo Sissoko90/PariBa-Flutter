@@ -14,8 +14,8 @@ PersonModel _$PersonModelFromJson(Map<String, dynamic> json) => PersonModel(
           : DateTime.parse(json['updatedAt'] as String),
       prenom: json['prenom'] as String,
       nom: json['nom'] as String,
-      email: json['email'] as String,
-      phone: json['phone'] as String,
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
       photo: json['photo'] as String?,
       role: json['role'] as String,
     );

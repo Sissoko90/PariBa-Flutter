@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'person_model.dart';
 
 part 'tour_model.g.dart';
 
@@ -6,27 +7,29 @@ part 'tour_model.g.dart';
 class TourModel {
   final String id;
   final DateTime createdAt;
-  final DateTime updatedAt;
-  final String groupId;
+  final DateTime? updatedAt;
+  final String? groupId;
   final int indexInGroup;
-  final String beneficiaryPersonId;
-  final String scheduledDate;
+  final String? beneficiaryPersonId;
+  final PersonModel? beneficiary;
+  final String? scheduledDate;
   final String status; // SCHEDULED, IN_PROGRESS, PAID_OUT, CLOSED
-  final double totalDue;
-  final double totalCollected;
+  final double? totalDue;
+  final double? totalCollected;
   final String? payoutPaymentId;
 
   TourModel({
     required this.id,
     required this.createdAt,
-    required this.updatedAt,
-    required this.groupId,
+    this.updatedAt,
+    this.groupId,
     required this.indexInGroup,
-    required this.beneficiaryPersonId,
-    required this.scheduledDate,
+    this.beneficiaryPersonId,
+    this.beneficiary,
+    this.scheduledDate,
     required this.status,
-    required this.totalDue,
-    required this.totalCollected,
+    this.totalDue,
+    this.totalCollected,
     this.payoutPaymentId,
   });
 

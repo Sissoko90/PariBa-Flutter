@@ -76,3 +76,13 @@ class LoadPendingPaymentsEvent extends PaymentEvent {
 class LoadMyPaymentsEvent extends PaymentEvent {
   const LoadMyPaymentsEvent();
 }
+
+/// Événement pour charger l'historique des paiements d'un groupe
+class LoadPaymentHistoryEvent extends PaymentEvent {
+  final String groupId;
+
+  const LoadPaymentHistoryEvent(this.groupId);
+
+  @override
+  List<Object?> get props => [groupId];
+}

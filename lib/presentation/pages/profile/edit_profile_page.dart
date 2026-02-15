@@ -26,7 +26,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (state is Authenticated) {
       _prenomController.text = state.person.prenom;
       _nomController.text = state.person.nom;
-      _phoneController.text = state.person.phone;
+      _phoneController.text = state.person.phone ?? '';
     }
   }
 
@@ -41,9 +41,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Modifier le profil'),
-      ),
+      appBar: AppBar(title: const Text('Modifier le profil')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(

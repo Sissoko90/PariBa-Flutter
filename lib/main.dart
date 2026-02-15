@@ -17,9 +17,12 @@ import 'presentation/blocs/membership/membership_bloc.dart';
 import 'presentation/blocs/notification/notification_bloc.dart';
 import 'presentation/pages/auth/login_page.dart';
 import 'presentation/blocs/payment/payment_bloc.dart';
+import 'presentation/blocs/tour/tour_bloc.dart';
+import 'presentation/blocs/join_request/join_request_bloc.dart';
+import 'core/services/deep_link_service.dart';
 import 'presentation/pages/home/improved_dashboard_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
-import 'core/services/payment_service.dart';
+import 'presentation/widgets/deep_link_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +39,10 @@ void main() async {
   // Initialize Notification Service
   final notificationService = di.sl<NotificationService>();
   await notificationService.initialize();
+
+  // Initialize Deep Link Service
+  final deepLinkService = di.sl<DeepLinkService>();
+  await deepLinkService.initialize();
 
   // Check if onboarding is complete
   final prefs = await SharedPreferences.getInstance();
@@ -60,18 +67,19 @@ class PariBaApp extends StatelessWidget {
         BlocProvider(create: (context) => di.sl<GroupBloc>()),
         BlocProvider(create: (context) => di.sl<MembershipBloc>()),
         BlocProvider(create: (context) => di.sl<NotificationBloc>()),
-        BlocProvider<PaymentBloc>(
-          create: (context) =>
-              PaymentBloc(paymentService: di.sl<PaymentService>()),
-        ),
+        BlocProvider(create: (context) => di.sl<PaymentBloc>()),
+        BlocProvider(create: (context) => di.sl<TourBloc>()),
+        BlocProvider(create: (context) => di.sl<JoinRequestBloc>()),
       ],
-      child: MaterialApp(
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
-        home: showOnboarding ? const OnboardingPage() : const AuthWrapper(),
+      child: DeepLinkHandler(
+        child: MaterialApp(
+          title: AppConstants.appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.light,
+          home: showOnboarding ? const OnboardingPage() : const AuthWrapper(),
+        ),
       ),
     );
   }
@@ -156,7 +164,7 @@ class HomePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        state.person.email,
+                        state.person.email ?? state.person.phone ?? '',
                         style: Theme.of(context).textTheme.bodyMedium,
                         textAlign: TextAlign.center,
                       ),

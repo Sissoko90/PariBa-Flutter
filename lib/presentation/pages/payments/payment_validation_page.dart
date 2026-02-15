@@ -23,18 +23,38 @@ class PaymentValidationPage extends StatefulWidget {
   State<PaymentValidationPage> createState() => _PaymentValidationPageState();
 }
 
-class _PaymentValidationPageState extends State<PaymentValidationPage> {
+class _PaymentValidationPageState extends State<PaymentValidationPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
-    // Charger les paiements en attente
-    context.read<PaymentBloc>().add(LoadPendingPaymentsEvent(widget.groupId));
+    _tabController = TabController(length: 3, vsync: this);
+    // Charger tous les paiements du groupe
+    context.read<PaymentBloc>().add(LoadGroupPaymentsEvent(widget.groupId));
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Validation paiements - ${widget.groupName}')),
+      appBar: AppBar(
+        title: Text('Validation paiements - ${widget.groupName}'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'En attente', icon: Icon(Icons.pending_actions)),
+            Tab(text: 'Validés', icon: Icon(Icons.check_circle)),
+            Tab(text: 'Rejetés', icon: Icon(Icons.cancel)),
+          ],
+        ),
+      ),
       body: BlocBuilder<PaymentBloc, PaymentState>(
         builder: (context, state) {
           if (state is PaymentsLoading) {
@@ -42,17 +62,62 @@ class _PaymentValidationPageState extends State<PaymentValidationPage> {
           }
 
           if (state is PaymentError) {
-            return Center(child: Text('Erreur: ${state.message}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    state.message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      context.read<PaymentBloc>().add(
+                        LoadGroupPaymentsEvent(widget.groupId),
+                      );
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer'),
+                  ),
+                ],
+              ),
+            );
           }
 
-          if (state is PaymentsLoaded) {
-            final pendingPayments = state.pendingPayments;
+          if (state is PaymentsEmpty || state is PaymentsLoaded) {
+            final allPayments = state is PaymentsLoaded
+                ? state.payments
+                : <Payment>[];
 
-            if (pendingPayments.isEmpty) {
-              return _buildEmptyState();
-            }
+            // Filtrer les paiements par statut
+            final pendingPayments = allPayments
+                .where((p) => p.status == 'PENDING' || p.status == 'PROCESSING')
+                .toList();
+            final validatedPayments = allPayments
+                .where(
+                  (p) => p.status == 'CONFIRMED' || p.status == 'COMPLETED',
+                )
+                .toList();
+            final rejectedPayments = allPayments
+                .where((p) => p.status == 'REJECTED')
+                .toList();
 
-            return _buildPendingPaymentsList(pendingPayments);
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildPaymentsList(pendingPayments, 'En attente', true),
+                _buildPaymentsList(validatedPayments, 'Validés', false),
+                _buildPaymentsList(rejectedPayments, 'Rejetés', false),
+              ],
+            );
           }
 
           return const Center(child: Text('Chargement...'));
@@ -61,44 +126,68 @@ class _PaymentValidationPageState extends State<PaymentValidationPage> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.check_circle_outline,
-            size: 80,
-            color: AppColors.success,
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Aucun paiement en attente',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Tous les paiements ont été validés pour ${widget.groupName}',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-        ],
+  Widget _buildPaymentsList(
+    List<Payment> payments,
+    String emptyMessage,
+    bool showActions,
+  ) {
+    if (payments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              showActions ? Icons.check_circle_outline : Icons.info_outline,
+              size: 80,
+              color: showActions ? AppColors.success : AppColors.textSecondary,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Aucun paiement $emptyMessage',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              showActions
+                  ? 'Tous les paiements ont été traités'
+                  : 'Aucun paiement dans cette catégorie',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<PaymentBloc>().add(LoadGroupPaymentsEvent(widget.groupId));
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: payments.length,
+        itemBuilder: (context, index) {
+          final payment = payments[index];
+          return _buildPaymentCard(payment, showActions);
+        },
       ),
     );
   }
 
-  Widget _buildPendingPaymentsList(List<Payment> payments) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: payments.length,
-      itemBuilder: (context, index) {
-        final payment = payments[index];
-        return _buildPaymentCard(payment);
-      },
-    );
-  }
+  Widget _buildPaymentCard(Payment payment, bool showActions) {
+    Color statusColor;
+    switch (payment.status) {
+      case 'CONFIRMED':
+      case 'COMPLETED':
+        statusColor = AppColors.success;
+        break;
+      case 'REJECTED':
+        statusColor = AppColors.error;
+        break;
+      default:
+        statusColor = AppColors.warning;
+    }
 
-  Widget _buildPaymentCard(Payment payment) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -110,11 +199,13 @@ class _PaymentValidationPageState extends State<PaymentValidationPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  payment.payerName ?? 'Membre',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                Expanded(
+                  child: Text(
+                    payment.payerName ?? 'Membre',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
                 Container(
@@ -123,13 +214,13 @@ class _PaymentValidationPageState extends State<PaymentValidationPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.1),
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     payment.statusLabel,
                     style: TextStyle(
-                      color: AppColors.warning,
+                      color: statusColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -159,7 +250,13 @@ class _PaymentValidationPageState extends State<PaymentValidationPage> {
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: 8),
-                Text(CurrencyFormatter.format(payment.amount)),
+                Text(
+                  CurrencyFormatter.format(payment.amount),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ],
             ),
 
@@ -178,39 +275,43 @@ class _PaymentValidationPageState extends State<PaymentValidationPage> {
               const SizedBox(height: 8),
               Text(
                 'Notes: ${payment.notes}',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
 
-            const SizedBox(height: 16),
-
-            // Boutons d'action
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showRejectDialog(payment),
-                    icon: const Icon(Icons.close, size: 18),
-                    label: const Text('Rejeter'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.error,
-                      side: BorderSide(color: AppColors.error),
+            if (showActions) ...[
+              const SizedBox(height: 16),
+              // Boutons d'action
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showRejectDialog(payment),
+                      icon: const Icon(Icons.close, size: 18),
+                      label: const Text('Rejeter'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _validatePayment(payment, true),
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('Valider'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _validatePayment(payment, true),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Valider'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -234,6 +335,11 @@ class _PaymentValidationPageState extends State<PaymentValidationPage> {
         backgroundColor: confirmed ? AppColors.success : AppColors.error,
       ),
     );
+
+    // Recharger les paiements après validation
+    Future.delayed(const Duration(seconds: 1), () {
+      context.read<PaymentBloc>().add(LoadGroupPaymentsEvent(widget.groupId));
+    });
   }
 
   void _showRejectDialog(Payment payment) {

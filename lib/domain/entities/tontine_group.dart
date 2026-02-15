@@ -14,7 +14,7 @@ class TontineGroup extends Equatable {
   final String startDate;
   final double? latePenaltyAmount;
   final int? graceDays;
-  final String? role;
+  final String? currentUserRole; // Rôle de l'utilisateur actuel dans ce groupe
   final String creatorPersonId;
   final String status;
 
@@ -31,7 +31,7 @@ class TontineGroup extends Equatable {
     required this.startDate,
     this.latePenaltyAmount,
     this.graceDays,
-    this.role,
+    this.currentUserRole,
     this.status = 'active',
     required this.creatorPersonId,
   });

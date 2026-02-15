@@ -71,6 +71,41 @@ class DeleteGroupEvent extends GroupEvent {
   List<Object?> get props => [groupId];
 }
 
+/// Update Group Event
+class UpdateGroupEvent extends GroupEvent {
+  final String groupId;
+  final String? nom;
+  final String? description;
+  final double? montant;
+  final String? frequency;
+  final String? rotationMode;
+  final double? latePenaltyAmount;
+  final int? graceDays;
+
+  const UpdateGroupEvent({
+    required this.groupId,
+    this.nom,
+    this.description,
+    this.montant,
+    this.frequency,
+    this.rotationMode,
+    this.latePenaltyAmount,
+    this.graceDays,
+  });
+
+  @override
+  List<Object?> get props => [
+    groupId,
+    nom,
+    description,
+    montant,
+    frequency,
+    rotationMode,
+    latePenaltyAmount,
+    graceDays,
+  ];
+}
+
 /// Leave Group Event
 class LeaveGroupEvent extends GroupEvent {
   final String groupId;

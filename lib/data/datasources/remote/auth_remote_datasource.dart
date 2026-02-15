@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/error_message_mapper.dart';
 import '../../models/person_model.dart';
 
 /// Auth Remote DataSource
@@ -38,13 +39,44 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'person': authData['person'],
         };
       } else {
-        throw Exception(response.data['message'] ?? 'Erreur de connexion');
+        final errorMessage = response.data['message'] ?? 'Erreur de connexion';
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        throw Exception('Email ou mot de passe incorrect');
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final responseData = e.response!.data;
+
+        String errorMessage = 'Erreur de connexion';
+        if (responseData is Map && responseData['message'] != null) {
+          errorMessage = responseData['message'];
+        }
+
+        if (statusCode == 401) {
+          throw Exception('Email/téléphone ou mot de passe incorrect');
+        }
+
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
       }
-      throw Exception('Erreur de connexion: ${e.message}');
+
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw Exception(
+          'La connexion a pris trop de temps. Vérifiez votre connexion internet',
+        );
+      }
+
+      if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+          'Impossible de se connecter au serveur. Vérifiez votre connexion internet',
+        );
+      }
+
+      throw Exception(
+        'Une erreur de connexion s\'est produite. Veuillez réessayer',
+      );
+    } catch (e) {
+      throw Exception(ErrorMessageMapper.extractFriendlyMessage(e));
     }
   }
 
@@ -70,13 +102,66 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'person': authData['person'],
         };
       } else {
-        throw Exception(response.data['message'] ?? 'Erreur d\'inscription');
+        // Extraire le message d'erreur du backend
+        final errorMessage =
+            response.data['message'] ?? 'Erreur d\'inscription';
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 409) {
-        throw Exception('Cet utilisateur existe déjà');
+      // Gérer les différents codes d'erreur HTTP
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final responseData = e.response!.data;
+
+        // Extraire le message d'erreur du backend si disponible
+        String errorMessage = 'Erreur d\'inscription';
+
+        if (responseData is Map && responseData['message'] != null) {
+          errorMessage = responseData['message'];
+        } else if (responseData is String) {
+          errorMessage = responseData;
+        }
+
+        // Mapper selon le code HTTP
+        switch (statusCode) {
+          case 400:
+            // Erreur de validation
+            throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+          case 409:
+            // Conflit - utilisateur existe déjà
+            throw Exception(
+              'Un compte avec cet email ou ce numéro de téléphone existe déjà',
+            );
+          case 422:
+            // Erreur de validation détaillée
+            throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+          case 500:
+            throw Exception(
+              'Une erreur s\'est produite sur le serveur. Veuillez réessayer plus tard',
+            );
+          default:
+            throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+        }
       }
-      throw Exception('Erreur d\'inscription: ${e.message}');
+
+      // Erreur réseau ou timeout
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw Exception(
+          'La connexion a pris trop de temps. Vérifiez votre connexion internet',
+        );
+      }
+
+      if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+          'Impossible de se connecter au serveur. Vérifiez votre connexion internet',
+        );
+      }
+
+      throw Exception('Une erreur s\'est produite. Veuillez réessayer');
+    } catch (e) {
+      // Erreur inattendue
+      throw Exception(ErrorMessageMapper.extractFriendlyMessage(e));
     }
   }
 

@@ -14,9 +14,7 @@ class ProfilePage extends StatelessWidget {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         if (state is! Authenticated) {
-          return const Center(
-            child: Text('Non authentifié'),
-          );
+          return const Center(child: Text('Non authentifié'));
         }
 
         final person = state.person;
@@ -66,10 +64,8 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        person.email,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
+                        person.email ?? person.phone ?? 'Non renseigné',
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 16),
                       Container(
@@ -97,111 +93,82 @@ class ProfilePage extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Informations personnelles
-              _buildSection(
-                'Informations personnelles',
-                [
-                  _buildInfoTile(
-                    Icons.person_outline,
-                    'Prénom',
-                    person.prenom,
-                  ),
-                  _buildInfoTile(
-                    Icons.person_outline,
-                    'Nom',
-                    person.nom,
-                  ),
-                  _buildInfoTile(
-                    Icons.email_outlined,
-                    'Email',
-                    person.email,
-                  ),
-                  _buildInfoTile(
-                    Icons.phone_outlined,
-                    'Téléphone',
-                    person.phone,
-                  ),
-                ],
-              ),
+              _buildSection('Informations personnelles', [
+                _buildInfoTile(Icons.person_outline, 'Prénom', person.prenom),
+                _buildInfoTile(Icons.person_outline, 'Nom', person.nom),
+                _buildInfoTile(
+                  Icons.email_outlined,
+                  'Email',
+                  person.email ?? 'Non renseigné',
+                ),
+                _buildInfoTile(
+                  Icons.phone_outlined,
+                  'Téléphone',
+                  person.phone ?? 'Non renseigné',
+                ),
+              ]),
 
               const SizedBox(height: 24),
 
               // Paramètres
-              _buildSection(
-                'Paramètres',
-                [
-                  _buildActionTile(
-                    Icons.edit_outlined,
-                    'Modifier le profil',
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fonctionnalité en cours de développement'),
+              _buildSection('Paramètres', [
+                _buildActionTile(Icons.edit_outlined, 'Modifier le profil', () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Fonctionnalité en cours de développement'),
+                    ),
+                  );
+                }),
+                _buildActionTile(
+                  Icons.lock_outlined,
+                  'Changer le mot de passe',
+                  () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Fonctionnalité en cours de développement',
                         ),
-                      );
-                    },
-                  ),
-                  _buildActionTile(
-                    Icons.lock_outlined,
-                    'Changer le mot de passe',
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fonctionnalité en cours de développement'),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionTile(
+                  Icons.notifications_outlined,
+                  'Notifications',
+                  () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Fonctionnalité en cours de développement',
                         ),
-                      );
-                    },
-                  ),
-                  _buildActionTile(
-                    Icons.notifications_outlined,
-                    'Notifications',
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fonctionnalité en cours de développement'),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildActionTile(
-                    Icons.security_outlined,
-                    'Sécurité',
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fonctionnalité en cours de développement'),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionTile(Icons.security_outlined, 'Sécurité', () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Fonctionnalité en cours de développement'),
+                    ),
+                  );
+                }),
+              ]),
 
               const SizedBox(height: 24),
 
               // À propos
-              _buildSection(
-                'À propos',
-                [
-                  _buildActionTile(
-                    Icons.help_outline,
-                    'Aide & Support',
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fonctionnalité en cours de développement'),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildActionTile(
-                    Icons.info_outline,
-                    'À propos de PariBa',
-                    () {
-                      _showAboutDialog(context);
-                    },
-                  ),
-                ],
-              ),
+              _buildSection('À propos', [
+                _buildActionTile(Icons.help_outline, 'Aide & Support', () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Fonctionnalité en cours de développement'),
+                    ),
+                  );
+                }),
+                _buildActionTile(Icons.info_outline, 'À propos de PariBa', () {
+                  _showAboutDialog(context);
+                }),
+              ]),
 
               const SizedBox(height: 24),
 
@@ -209,10 +176,7 @@ class ProfilePage extends StatelessWidget {
               Card(
                 color: AppColors.error.withOpacity(0.1),
                 child: ListTile(
-                  leading: const Icon(
-                    Icons.logout,
-                    color: AppColors.error,
-                  ),
+                  leading: const Icon(Icons.logout, color: AppColors.error),
                   title: const Text(
                     'Se déconnecter',
                     style: TextStyle(
@@ -256,17 +220,10 @@ class ProfilePage extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
-        Card(
-          child: Column(
-            children: children,
-          ),
-        ),
+        Card(child: Column(children: children)),
       ],
     );
   }
@@ -276,17 +233,11 @@ class ProfilePage extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary),
       title: Text(
         label,
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textSecondary,
-        ),
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
       subtitle: Text(
         value,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -337,10 +288,7 @@ class ProfilePage extends StatelessWidget {
           children: [
             Text(
               'PariBa - Gestion de Tontines',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             SizedBox(height: 8),
             Text('Version 1.0.0'),
@@ -351,10 +299,7 @@ class ProfilePage extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               '© 2024 PariBa. Tous droits réservés.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
         ),

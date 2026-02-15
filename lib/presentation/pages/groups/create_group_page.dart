@@ -39,7 +39,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   final List<Map<String, String>> _rotationModes = [
     {'value': 'SEQUENTIAL', 'label': 'Séquentiel'},
     {'value': 'RANDOM', 'label': 'Aléatoire'},
-    {'value': 'BIDDING', 'label': 'Enchères'},
+    {'value': 'CUSTOM', 'label': 'Personnalisé'},
   ];
 
   @override
@@ -51,6 +51,19 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     _graceDaysController.dispose();
     _latePenaltyController.dispose();
     super.dispose();
+  }
+
+  String _getRotationModeDescription(String mode) {
+    switch (mode) {
+      case 'SEQUENTIAL':
+        return 'L\'ordre de passage est déterminé par l\'ordre d\'ajout des membres au groupe. Prévisible et simple.';
+      case 'RANDOM':
+        return 'L\'ordre de passage est tiré au sort automatiquement. Équitable pour tous les membres.';
+      case 'CUSTOM':
+        return 'L\'administrateur définit manuellement l\'ordre de passage lors de la génération des tours. Flexible pour gérer les cas particuliers.';
+      default:
+        return '';
+    }
   }
 
   void _handleCreateGroup() {
@@ -202,6 +215,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                     decoration: const InputDecoration(
                       labelText: 'Mode de rotation',
                       prefixIcon: Icon(Icons.rotate_right),
+                      helperText: 'Détermine l\'ordre de passage des tours',
                     ),
                     items: _rotationModes.map((mode) {
                       return DropdownMenuItem(
@@ -216,6 +230,40 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                               _selectedRotationMode = value!;
                             });
                           },
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Description du mode sélectionné
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.info.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          color: AppColors.info,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _getRotationModeDescription(_selectedRotationMode),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.info,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 16),

@@ -19,16 +19,23 @@ import '../data/datasources/remote/group_remote_datasource.dart';
 import '../data/datasources/remote/membership_remote_datasource.dart';
 import '../data/datasources/remote/invitation_remote_datasource.dart';
 import '../data/datasources/remote/payment_remote_datasource.dart';
+import '../data/datasources/remote/tour_remote_datasource.dart';
 import '../data/datasources/remote/notification_remote_datasource.dart';
 import '../data/datasources/remote/person_remote_datasource.dart';
 import '../data/datasources/remote/dashboard_remote_datasource.dart';
 import '../data/datasources/remote/advertisement_remote_datasource.dart';
+import '../data/datasources/remote/contribution_remote_datasource.dart';
+import '../data/datasources/remote/join_request_remote_datasource.dart';
 import '../data/repositories/auth_repository_impl.dart';
 import '../data/repositories/group_repository_impl.dart';
+import '../data/repositories/contribution_repository_impl.dart';
+import '../data/repositories/join_request_repository_impl.dart';
 
 // Domain
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/group_repository.dart';
+import '../domain/repositories/contribution_repository.dart';
+import '../domain/repositories/join_request_repository.dart';
 import '../domain/usecases/auth/login_usecase.dart';
 import '../domain/usecases/auth/register_usecase.dart';
 import '../domain/usecases/group/create_group_usecase.dart';
@@ -40,6 +47,10 @@ import '../presentation/blocs/auth/auth_bloc.dart';
 import '../presentation/blocs/group/group_bloc.dart';
 import '../presentation/blocs/membership/membership_bloc.dart';
 import '../presentation/blocs/payment/payment_bloc.dart';
+import '../presentation/blocs/tour/tour_bloc.dart';
+import '../presentation/blocs/contribution/contribution_bloc.dart';
+import '../presentation/blocs/join_request/join_request_bloc.dart';
+import '../core/services/deep_link_service.dart';
 
 final sl = GetIt.instance;
 
@@ -75,6 +86,9 @@ Future<void> initializeDependencies() async {
     () => NotificationService(sl(), notificationDataSource: sl()),
   );
 
+  // Deep Linking
+  sl.registerLazySingleton(() => DeepLinkService());
+
   // ============ Data ============
 
   // BLoCs
@@ -95,6 +109,9 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton<PaymentRemoteDataSource>(
     () => PaymentRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<TourRemoteDataSource>(
+    () => TourRemoteDataSourceImpl(sl()),
+  );
   sl.registerLazySingleton<NotificationRemoteDataSource>(
     () => NotificationRemoteDataSourceImpl(sl()),
   );
@@ -107,6 +124,12 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton<AdvertisementRemoteDataSource>(
     () => AdvertisementRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<ContributionRemoteDataSource>(
+    () => ContributionRemoteDataSourceImpl(),
+  );
+  sl.registerLazySingleton<JoinRequestRemoteDataSource>(
+    () => JoinRequestRemoteDataSourceImpl(sl()),
+  );
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
@@ -118,6 +141,12 @@ Future<void> initializeDependencies() async {
       invitationDataSource: sl(),
       tokenManager: sl(),
     ),
+  );
+  sl.registerLazySingleton<ContributionRepository>(
+    () => ContributionRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<JoinRequestRepository>(
+    () => JoinRequestRepositoryImpl(sl()),
   );
 
   // ============ Domain ============
@@ -157,6 +186,11 @@ Future<void> initializeDependencies() async {
   sl.registerFactory(() => MembershipBloc(membershipDataSource: sl()));
 
   sl.registerFactory(() => NotificationBloc(notificationDataSource: sl()));
-  sl.registerFactory(() => PaymentBloc(paymentService: sl()));
+  sl.registerFactory(
+    () => PaymentBloc(paymentService: sl(), paymentRemoteDataSource: sl()),
+  );
+  sl.registerFactory(() => TourBloc(tourRemoteDataSource: sl()));
+  sl.registerFactory(() => ContributionBloc(contributionRepository: sl()));
+  sl.registerFactory(() => JoinRequestBloc(sl()));
   print('✅ Toutes les dépendances initialisées');
 }

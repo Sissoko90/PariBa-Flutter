@@ -4,17 +4,18 @@ import '../constants/app_constants.dart';
 class Validators {
   Validators._();
 
-  /// Validate email
+  /// Validate email (optionnel)
   static String? email(String? value) {
+    // Email est optionnel
     if (value == null || value.isEmpty) {
-      return 'L\'email est requis';
+      return null; // Pas d'erreur si vide
     }
-    
+
     final emailRegex = RegExp(AppConstants.emailPattern);
     if (!emailRegex.hasMatch(value)) {
-      return 'Email invalide';
+      return 'L\'adresse email n\'est pas valide';
     }
-    
+
     return null;
   }
 
@@ -23,44 +24,29 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Le numéro de téléphone est requis';
     }
-    
+
     final phoneRegex = RegExp(AppConstants.phonePattern);
     if (!phoneRegex.hasMatch(value)) {
       return 'Numéro invalide. Format: +223XXXXXXXX';
     }
-    
+
     return null;
   }
 
-  /// Validate password
+  /// Validate password (aligné avec backend: min 8 caractères)
   static String? password(String? value) {
     if (value == null || value.isEmpty) {
       return 'Le mot de passe est requis';
     }
-    
+
     if (value.length < AppConstants.minPasswordLength) {
       return 'Le mot de passe doit contenir au moins ${AppConstants.minPasswordLength} caractères';
     }
-    
+
     if (value.length > AppConstants.maxPasswordLength) {
       return 'Le mot de passe ne doit pas dépasser ${AppConstants.maxPasswordLength} caractères';
     }
-    
-    // Check for at least one uppercase letter
-    if (!value.contains(RegExp(r'[A-Z]'))) {
-      return 'Le mot de passe doit contenir au moins une majuscule';
-    }
-    
-    // Check for at least one lowercase letter
-    if (!value.contains(RegExp(r'[a-z]'))) {
-      return 'Le mot de passe doit contenir au moins une minuscule';
-    }
-    
-    // Check for at least one digit
-    if (!value.contains(RegExp(r'[0-9]'))) {
-      return 'Le mot de passe doit contenir au moins un chiffre';
-    }
-    
+
     return null;
   }
 
@@ -69,11 +55,11 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'La confirmation du mot de passe est requise';
     }
-    
+
     if (value != password) {
       return 'Les mots de passe ne correspondent pas';
     }
-    
+
     return null;
   }
 
@@ -90,15 +76,15 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Le code OTP est requis';
     }
-    
+
     if (value.length != AppConstants.otpLength) {
       return 'Le code doit contenir ${AppConstants.otpLength} chiffres';
     }
-    
+
     if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
       return 'Le code doit contenir uniquement des chiffres';
     }
-    
+
     return null;
   }
 
@@ -107,37 +93,41 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Le montant est requis';
     }
-    
+
     final amount = double.tryParse(value);
     if (amount == null) {
       return 'Montant invalide';
     }
-    
+
     if (min != null && amount < min) {
       return 'Le montant minimum est $min ${AppConstants.currency}';
     }
-    
+
     if (max != null && amount > max) {
       return 'Le montant maximum est $max ${AppConstants.currency}';
     }
-    
+
     return null;
   }
 
-  /// Validate name
+  /// Validate name (aligné avec backend: 2-50 caractères)
   static String? name(String? value, {String? fieldName}) {
     if (value == null || value.isEmpty) {
       return '${fieldName ?? 'Le nom'} est requis';
     }
-    
+
     if (value.length < 2) {
       return '${fieldName ?? 'Le nom'} doit contenir au moins 2 caractères';
     }
-    
+
+    if (value.length > 50) {
+      return '${fieldName ?? 'Le nom'} ne doit pas dépasser 50 caractères';
+    }
+
     if (!RegExp(r'^[a-zA-ZÀ-ÿ\s-]+$').hasMatch(value)) {
       return '${fieldName ?? 'Le nom'} contient des caractères invalides';
     }
-    
+
     return null;
   }
 }

@@ -20,6 +20,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     on<LoadGroupsEvent>(_onLoadGroups);
     on<CreateGroupEvent>(_onCreateGroup);
     on<LoadGroupDetailsEvent>(_onLoadGroupDetails);
+    on<UpdateGroupEvent>(_onUpdateGroup);
     on<DeleteGroupEvent>(_onDeleteGroup);
     on<LeaveGroupEvent>(_onLeaveGroup);
   }
@@ -90,6 +91,38 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
       final groupModel = TontineGroupMapper.toModel(group);
       emit(GroupDetailsLoaded(groupModel)); // <-- CORRECTION ICI
     });
+  }
+
+  /// Handle Update Group
+  Future<void> _onUpdateGroup(
+    UpdateGroupEvent event,
+    Emitter<GroupState> emit,
+  ) async {
+    print('🔵 GroupBloc - Mise à jour groupe: ${event.groupId}');
+    emit(const GroupLoading());
+
+    final result = await groupRepository.updateGroup(
+      groupId: event.groupId,
+      nom: event.nom,
+      description: event.description,
+      montant: event.montant,
+      frequency: event.frequency,
+      rotationMode: event.rotationMode,
+      latePenaltyAmount: event.latePenaltyAmount,
+      graceDays: event.graceDays,
+    );
+
+    result.fold(
+      (failure) {
+        print('❌ GroupBloc - Mise à jour échouée: ${failure.message}');
+        emit(GroupError(failure.message));
+      },
+      (group) {
+        print('✅ GroupBloc - Groupe mis à jour');
+        final groupModel = TontineGroupMapper.toModel(group);
+        emit(GroupDetailsLoaded(groupModel));
+      },
+    );
   }
 
   /// Handle Delete Group

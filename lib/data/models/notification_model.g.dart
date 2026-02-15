@@ -21,6 +21,7 @@ NotificationModel _$NotificationModelFromJson(Map<String, dynamic> json) =>
       scheduledAt: json['scheduledAt'] as String?,
       sentAt: json['sentAt'] as String?,
       readFlag: json['readFlag'] as bool,
+      metadata: json['metadata'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$NotificationModelToJson(NotificationModel instance) =>
@@ -36,4 +37,5 @@ Map<String, dynamic> _$NotificationModelToJson(NotificationModel instance) =>
       'scheduledAt': instance.scheduledAt,
       'sentAt': instance.sentAt,
       'readFlag': instance.readFlag,
+      'metadata': instance.metadata,
     };

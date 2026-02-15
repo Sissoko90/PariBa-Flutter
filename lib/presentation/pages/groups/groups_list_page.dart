@@ -11,80 +11,106 @@ import 'create_group_page.dart';
 import 'accept_invitation_page.dart';
 import '../../../data/models/tontine_group_model.dart';
 
-class GroupsListPage extends StatelessWidget {
+class GroupsListPage extends StatefulWidget {
   const GroupsListPage({super.key});
 
   @override
+  State<GroupsListPage> createState() => _GroupsListPageState();
+}
+
+class _GroupsListPageState extends State<GroupsListPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Charger les groupes au démarrage après la construction du widget
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<GroupBloc>().add(const LoadGroupsEvent());
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mes Groupes'),
-        centerTitle: true,
-        actions: [
-          // Bouton pour rejoindre un groupe
-          IconButton(
-            icon: const Icon(Icons.group_add),
-            tooltip: 'Rejoindre un groupe',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AcceptInvitationPage(),
-                ),
+    return BlocListener<GroupBloc, GroupState>(
+      listener: (context, state) {
+        // Recharger la liste après suppression, sortie ou modification de groupe
+        if (state is GroupDeleted ||
+            state is GroupLeft ||
+            state is GroupDetailsLoaded) {
+          context.read<GroupBloc>().add(const LoadGroupsEvent());
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mes Groupes'),
+          centerTitle: true,
+          actions: [
+            // Bouton pour rejoindre un groupe
+            IconButton(
+              icon: const Icon(Icons.group_add),
+              tooltip: 'Rejoindre un groupe',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AcceptInvitationPage(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: BlocBuilder<GroupBloc, GroupState>(
+          builder: (context, state) {
+            if (state is GroupLoading) {
+              return const LoadingIndicator(
+                message: 'Chargement des groupes...',
               );
-            },
-          ),
-        ],
-      ),
-      body: BlocBuilder<GroupBloc, GroupState>(
-        builder: (context, state) {
-          if (state is GroupLoading) {
-            return const LoadingIndicator(message: 'Chargement des groupes...');
-          }
-
-          if (state is GroupError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    style: const TextStyle(color: AppColors.error),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // CORRECTION ICI : Utilisez context.read<GroupBloc>().add()
-                      context.read<GroupBloc>().add(const LoadGroupsEvent());
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Réessayer'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (state is GroupsLoaded) {
-            if (state.groups.isEmpty) {
-              return _buildEmptyState(context);
             }
 
-            return _buildGroupsList(context, state.groups);
-          }
+            if (state is GroupError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: AppColors.error,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.message,
+                      style: const TextStyle(color: AppColors.error),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        // CORRECTION ICI : Utilisez context.read<GroupBloc>().add()
+                        context.read<GroupBloc>().add(const LoadGroupsEvent());
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Réessayer'),
+                    ),
+                  ],
+                ),
+              );
+            }
 
-          return const SizedBox.shrink();
-        },
+            if (state is GroupsLoaded) {
+              if (state.groups.isEmpty) {
+                return _buildEmptyState(context);
+              }
+
+              return _buildGroupsList(context, state.groups);
+            }
+
+            return const SizedBox.shrink();
+          },
+        ),
+        // Floating Action Button avec menu
+        floatingActionButton: _buildFloatingActionButton(context),
       ),
-      // Floating Action Button avec menu
-      floatingActionButton: _buildFloatingActionButton(context),
     );
   }
 
@@ -207,6 +233,14 @@ class GroupsListPage extends StatelessWidget {
         itemBuilder: (context, index) {
           final group = groups[index];
 
+          // 🔍 DEBUG: Vérifier currentUserRole
+          if (groups.isNotEmpty) {
+            print('🔍 DEBUG GroupsListPage - Premier groupe: ${groups[0].nom}');
+            print(
+              '🔍 DEBUG GroupsListPage - currentUserRole: ${groups[0].currentUserRole}',
+            );
+          }
+
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(
@@ -264,9 +298,9 @@ class GroupsListPage extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              // Badge si admin - CORRECTION ICI
-                              if (group.role != null &&
-                                  group.role == 'ADMIN') ...[
+                              // Badge si admin
+                              if (group.currentUserRole != null &&
+                                  group.currentUserRole == 'ADMIN') ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -306,27 +340,33 @@ class GroupsListPage extends StatelessWidget {
                                 color: AppColors.primary,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                CurrencyFormatter.format(group.montant),
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                              Flexible(
+                                child: Text(
+                                  CurrencyFormatter.format(group.montant),
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8),
                               Icon(
                                 Icons.calendar_month,
                                 size: 14,
                                 color: AppColors.secondary,
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                group.frequency,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.secondary,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  group.frequency,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.secondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
