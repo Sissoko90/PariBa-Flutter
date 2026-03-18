@@ -1,8 +1,10 @@
 // di/injection.dart - CORRIGÉ
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/network/dio_client.dart';
 import '../core/network/network_info.dart';
@@ -13,6 +15,7 @@ import '../core/services/firebase_messaging_service.dart';
 import '../core/services/notification_service.dart';
 import '../presentation/blocs/notification/notification_bloc.dart';
 import '../core/services/payment_service.dart';
+import '../core/services/preferences_service.dart'; // 👈 AJOUTER CET IMPORT
 // Data
 import '../data/datasources/remote/auth_remote_datasource.dart';
 import '../data/datasources/remote/group_remote_datasource.dart';
@@ -30,7 +33,8 @@ import '../data/repositories/auth_repository_impl.dart';
 import '../data/repositories/group_repository_impl.dart';
 import '../data/repositories/contribution_repository_impl.dart';
 import '../data/repositories/join_request_repository_impl.dart';
-
+import '../data/repositories/subscription_repository.dart';
+import '../data/datasources/remote/subscription_remote_datasource.dart';
 // Domain
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/group_repository.dart';
@@ -42,7 +46,7 @@ import '../domain/usecases/group/create_group_usecase.dart';
 import '../domain/usecases/group/get_groups_usecase.dart';
 import '../domain/usecases/notification/register_fcm_token_usecase.dart';
 
-// Presentation
+// Presentation - BLoCs
 import '../presentation/blocs/auth/auth_bloc.dart';
 import '../presentation/blocs/group/group_bloc.dart';
 import '../presentation/blocs/membership/membership_bloc.dart';
@@ -50,6 +54,8 @@ import '../presentation/blocs/payment/payment_bloc.dart';
 import '../presentation/blocs/tour/tour_bloc.dart';
 import '../presentation/blocs/contribution/contribution_bloc.dart';
 import '../presentation/blocs/join_request/join_request_bloc.dart';
+import '../presentation/blocs/preferences/preferences_bloc.dart'; // 👈 AJOUTER L'IMPORT DU BLOC
+// Services
 import '../core/services/deep_link_service.dart';
 
 final sl = GetIt.instance;
@@ -60,21 +66,32 @@ Future<void> initializeDependencies() async {
 
   // ============ Core ============
 
-  // External
+  // External - DOIT ÊTRE EN PREMIER
+  final prefs = await SharedPreferences.getInstance();
+  sl.registerLazySingleton<SharedPreferences>(() => prefs);
+  print('✅ SharedPreferences enregistré');
+
   sl.registerLazySingleton(() => const FlutterSecureStorage());
   sl.registerLazySingleton(() => Connectivity());
 
-  // Services - DOIT ÊTRE EN PREMIER
+  // Services
   sl.registerLazySingleton(() => AuthService());
   print('✅ AuthService enregistré');
+
+  sl.registerLazySingleton(() => Dio());
 
   // Security
   sl.registerLazySingleton(() => TokenManager(sl()));
   sl.registerLazySingleton(() => PaymentService());
   print('✅ PaymentService enregistré');
+
   // GroupService dépend de AuthService
   sl.registerLazySingleton(() => GroupService(authService: sl()));
   print('✅ GroupService enregistré');
+
+  // Preferences Service - NOUVEAU
+  sl.registerLazySingleton(() => PreferencesService(sl<SharedPreferences>()));
+  print('✅ PreferencesService enregistré');
 
   // Network
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(sl()));
@@ -82,18 +99,20 @@ Future<void> initializeDependencies() async {
 
   // Notifications
   sl.registerLazySingleton(() => FirebaseMessagingService());
-  sl.registerLazySingleton(
-    () => NotificationService(sl(), notificationDataSource: sl()),
-  );
+
+  // NotificationService nécessite NotificationRemoteDataSource
+  // On va le déclarer après les data sources
 
   // Deep Linking
   sl.registerLazySingleton(() => DeepLinkService());
 
   // ============ Data ============
 
-  // BLoCs
-
   // DataSources
+  sl.registerLazySingleton<SubscriptionRemoteDataSource>(
+    () => SubscriptionRemoteDataSource(sl()),
+  );
+
   sl.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(sl()),
   );
@@ -148,6 +167,9 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton<JoinRequestRepository>(
     () => JoinRequestRepositoryImpl(sl()),
   );
+  sl.registerLazySingleton<SubscriptionRepository>(
+    () => SubscriptionRepository(sl()),
+  );
 
   // ============ Domain ============
 
@@ -161,6 +183,14 @@ Future<void> initializeDependencies() async {
 
   // UseCases - Notification
   sl.registerLazySingleton(() => RegisterFcmTokenUseCase(sl()));
+
+  // ============ Services dépendants ============
+
+  // NotificationService nécessite NotificationRemoteDataSource
+  sl.registerLazySingleton(
+    () => NotificationService(sl(), notificationDataSource: sl()),
+  );
+  print('✅ NotificationService enregistré');
 
   // ============ Presentation ============
 
@@ -184,7 +214,6 @@ Future<void> initializeDependencies() async {
   );
 
   sl.registerFactory(() => MembershipBloc(membershipDataSource: sl()));
-
   sl.registerFactory(() => NotificationBloc(notificationDataSource: sl()));
   sl.registerFactory(
     () => PaymentBloc(paymentService: sl(), paymentRemoteDataSource: sl()),
@@ -192,5 +221,10 @@ Future<void> initializeDependencies() async {
   sl.registerFactory(() => TourBloc(tourRemoteDataSource: sl()));
   sl.registerFactory(() => ContributionBloc(contributionRepository: sl()));
   sl.registerFactory(() => JoinRequestBloc(sl()));
+
+  // 👇 NOUVEAU - PreferencesBloc
+  sl.registerFactory(() => PreferencesBloc(preferencesService: sl()));
+  print('✅ PreferencesBloc enregistré');
+
   print('✅ Toutes les dépendances initialisées');
 }

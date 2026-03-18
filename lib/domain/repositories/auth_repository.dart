@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
 import '../entities/auth_result.dart';
@@ -19,6 +21,8 @@ abstract class AuthRepository {
     required String phone,
     required String password,
   });
+  // Dans AuthRepository
+  Future<Either<Failure, Person>> uploadProfilePhoto(File file);
 
   /// Send OTP code
   Future<Either<Failure, void>> sendOtp({

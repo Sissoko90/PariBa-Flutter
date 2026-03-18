@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
+import 'package:pariba/core/constants/api_constants.dart';
 import '../../core/errors/exceptions.dart';
 import '../../core/errors/failures.dart';
 import '../../core/security/token_manager.dart';
@@ -75,6 +79,64 @@ class AuthRepositoryImpl implements AuthRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Person>> uploadProfilePhoto(File file) async {
+    try {
+      print('🔵 AuthRepository - Upload photo de profil');
+
+      // Récupérer le token
+      final token = await tokenManager.getAccessToken();
+      if (token == null) {
+        return Left(UnauthorizedFailure('Non authentifié'));
+      }
+
+      // Créer un MultipartFile
+      final fileName = file.path.split('/').last;
+      final multipartFile = await MultipartFile.fromFile(
+        file.path,
+        filename: fileName,
+      );
+
+      // Créer le form data
+      final formData = FormData.fromMap({'file': multipartFile});
+
+      // Créer une instance Dio (vous devrez l'injecter ou l'importer)
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: ApiConstants.baseUrl,
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      // Faire la requête
+      final response = await dio.post(
+        ApiConstants.uploadPhoto,
+        data: formData,
+        options: Options(headers: {'Content-Type': 'multipart/form-data'}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'];
+
+        // Convertir en PersonModel puis en Person
+        final personModel = PersonModel.fromJson(data);
+        final person = _personModelToEntity(personModel);
+
+        print('✅ AuthRepository - Photo uploadée avec succès');
+
+        return Right(person);
+      } else {
+        return Left(ServerFailure('Erreur lors de l\'upload'));
+      }
+    } on DioException catch (e) {
+      print('❌ AuthRepository - DioError upload: ${e.response?.data}');
+      return Left(ServerFailure(e.response?.data['message'] ?? e.message));
+    } catch (e) {
+      print('❌ AuthRepository - Erreur upload: $e');
       return Left(ServerFailure(e.toString()));
     }
   }

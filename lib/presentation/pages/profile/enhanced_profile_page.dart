@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pariba/presentation/pages/notifications/enhanced_notifications_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
+import '../../blocs/group/group_bloc.dart';
+import '../../blocs/group/group_state.dart';
 import 'edit_profile_page.dart';
 import 'change_password_page.dart';
 import 'settings_page.dart';
 import 'help_support_page.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/utils/url_helper.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../blocs/notification/notification_bloc.dart';
+import '../../blocs/notification/notification_state.dart';
 
 /// Enhanced Profile Page - Version améliorée
 class EnhancedProfilePage extends StatelessWidget {
@@ -52,12 +61,17 @@ class EnhancedProfilePage extends StatelessWidget {
                       // Pattern overlay
                       Opacity(
                         opacity: 0.1,
-                        child: Image.asset(
-                          'assets/images/pattern.png',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const SizedBox.shrink();
-                          },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white,
+                                Colors.white.withOpacity(0.3),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       // Content
@@ -83,59 +97,74 @@ class EnhancedProfilePage extends StatelessWidget {
                                   ),
                                 ],
                               ),
-
-                              child: CircleAvatar(
-                                radius: 50,
-                                backgroundColor: AppColors.white,
-                                child: person.photo != null
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          person.photo!,
-                                          width: 100,
-                                          height: 100,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                                return const Icon(
-                                                  Icons.person,
-                                                  size: 50,
-                                                  color: AppColors.primary,
-                                                );
-                                              },
+                              child: GestureDetector(
+                                onTap: () => _changeProfilePhoto(context),
+                                child: CircleAvatar(
+                                  radius: 44,
+                                  backgroundColor: AppColors.white,
+                                  child:
+                                      person.photo != null &&
+                                          person.photo!.isNotEmpty
+                                      ? ClipOval(
+                                          child: Image.network(
+                                            UrlHelper.fixPhotoUrl(
+                                              person.photo!,
+                                            ),
+                                            width: 88,
+                                            height: 88,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                                  return Container(
+                                                    width: 88,
+                                                    height: 88,
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary
+                                                          .withOpacity(0.1),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      size: 40,
+                                                      color: AppColors.primary,
+                                                    ),
+                                                  );
+                                                },
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.person,
+                                          size: 40,
+                                          color: AppColors.primary,
                                         ),
-                                      )
-                                    : const Icon(
-                                        Icons.person,
-                                        size: 50,
-                                        color: AppColors.primary,
-                                      ),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             // Nom
                             Text(
                               person.fullName,
                               style: const TextStyle(
                                 color: AppColors.white,
-                                fontSize: 24,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             // Email
                             Text(
                               person.email ?? person.phone ?? 'Non renseigné',
                               style: TextStyle(
                                 color: AppColors.white.withOpacity(0.9),
-                                fontSize: 14,
+                                fontSize: 12,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             // Badge rôle
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
+                                horizontal: 12,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
                                 color: AppColors.white.withOpacity(0.2),
@@ -150,7 +179,7 @@ class EnhancedProfilePage extends StatelessWidget {
                                   const Icon(
                                     Icons.verified_user,
                                     color: AppColors.white,
-                                    size: 16,
+                                    size: 14,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
@@ -158,7 +187,7 @@ class EnhancedProfilePage extends StatelessWidget {
                                     style: const TextStyle(
                                       color: AppColors.white,
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 12,
+                                      fontSize: 11,
                                     ),
                                   ),
                                 ],
@@ -178,8 +207,42 @@ class EnhancedProfilePage extends StatelessWidget {
                   children: [
                     const SizedBox(height: 20),
 
-                    // Statistiques avec design amélioré
-                    _buildEnhancedStats(),
+                    // ✅ Statistiques avec vraies données des groupes
+                    BlocBuilder<GroupBloc, GroupState>(
+                      builder: (context, groupState) {
+                        int totalGroups = 0;
+                        int totalPayments = 0;
+                        int pendingPayments = 0;
+
+                        if (groupState is GroupsLoaded) {
+                          totalGroups = groupState.groups.length;
+
+                          // ✅ CORRECTION 1: Convertir double en int avec .toInt()
+                          totalPayments = groupState.groups
+                              .fold<double>(
+                                0,
+                                (sum, group) => sum + (group.montant ?? 0),
+                              )
+                              .toInt();
+
+                          // ✅ CORRECTION 2: pendingPayments n'existe pas, on utilise une autre propriété
+                          // Par exemple, on peut compter le nombre de groupes actifs
+                          pendingPayments = groupState.groups
+                              .where(
+                                (group) =>
+                                    group.status == 'pending' ||
+                                    group.status == 'active',
+                              )
+                              .length;
+                        }
+
+                        return _buildEnhancedStats(
+                          totalGroups: totalGroups,
+                          totalPayments: totalPayments,
+                          pendingPayments: pendingPayments,
+                        );
+                      },
+                    ),
 
                     const SizedBox(height: 24),
 
@@ -260,15 +323,83 @@ class EnhancedProfilePage extends StatelessWidget {
                         ),
                       ),
                       const Divider(height: 1),
-                      _buildActionTile(
-                        context,
-                        Icons.notifications_outlined,
-                        'Notifications',
-                        'Gérer vos alertes',
-                        AppColors.warning,
-                        () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('En développement')),
+                      // Tile des notifications avec badge
+                      BlocBuilder<NotificationBloc, NotificationState>(
+                        builder: (context, notifState) {
+                          int unreadCount = 0;
+                          if (notifState is NotificationLoaded) {
+                            unreadCount = notifState.unreadCount;
+                          }
+
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                unreadCount > 0
+                                    ? Icons.notifications_active
+                                    : Icons.notifications_outlined,
+                                color: AppColors.warning,
+                                size: 22,
+                              ),
+                            ),
+                            title: Row(
+                              children: [
+                                const Text(
+                                  'Notifications',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                if (unreadCount > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      unreadCount > 99 ? '99+' : '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            subtitle: const Text(
+                              'Gérer vos alertes',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            trailing: Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: AppColors.textSecondary.withOpacity(0.5),
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const EnhancedNotificationsPage(),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -371,7 +502,12 @@ class EnhancedProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildEnhancedStats() {
+  // ✅ Méthode avec paramètres dynamiques
+  Widget _buildEnhancedStats({
+    required int totalGroups,
+    required int totalPayments,
+    required int pendingPayments,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -390,7 +526,7 @@ class EnhancedProfilePage extends StatelessWidget {
         children: [
           Flexible(
             child: _buildStatItem(
-              '5',
+              totalGroups.toString(),
               'Groupes',
               Icons.group,
               AppColors.primary,
@@ -399,7 +535,7 @@ class EnhancedProfilePage extends StatelessWidget {
           Container(height: 40, width: 1, color: AppColors.greyLight),
           Flexible(
             child: _buildStatItem(
-              '12',
+              totalPayments.toString(),
               'Paiements',
               Icons.payment,
               AppColors.success,
@@ -408,7 +544,7 @@ class EnhancedProfilePage extends StatelessWidget {
           Container(height: 40, width: 1, color: AppColors.greyLight),
           Flexible(
             child: _buildStatItem(
-              '3',
+              pendingPayments.toString(),
               'En attente',
               Icons.pending,
               AppColors.warning,
@@ -642,6 +778,100 @@ class EnhancedProfilePage extends StatelessWidget {
       ),
       onTap: onTap,
     );
+  }
+
+  Future<void> _changeProfilePhoto(BuildContext context) async {
+    final picker = ImagePicker();
+
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Changer la photo'),
+          content: const Text('Choisissez une source'),
+          actions: [
+            TextButton.icon(
+              onPressed: () => Navigator.pop(context, ImageSource.camera),
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Appareil photo'),
+            ),
+            TextButton.icon(
+              onPressed: () => Navigator.pop(context, ImageSource.gallery),
+              icon: const Icon(Icons.photo_library),
+              label: const Text('Galerie'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    try {
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+
+      if (image == null) return;
+
+      if (!context.mounted) return;
+
+      BuildContext? dialogContext;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext ctx) {
+          dialogContext = ctx;
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      final file = File(image.path);
+
+      context.read<AuthBloc>().add(UploadProfilePhotoEvent(file: file));
+
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (dialogContext != null && context.mounted) {
+        try {
+          Navigator.of(dialogContext!).pop();
+        } catch (_) {}
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo de profil mise à jour avec succès'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _showLogoutDialog(BuildContext context) {

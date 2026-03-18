@@ -1,36 +1,30 @@
 import 'dart:async';
-import 'package:uni_links/uni_links.dart';
-import 'package:flutter/services.dart';
+import 'package:app_links/app_links.dart';
 
 class DeepLinkService {
   StreamSubscription? _linkSubscription;
   Function(String groupId)? onJoinGroupLink;
 
+  final AppLinks _appLinks = AppLinks();
+
   Future<void> initialize() async {
     // Gérer le lien initial (si l'app est ouverte via un lien)
     try {
-      final initialLink = await getInitialLink();
-      if (initialLink != null) {
-        _handleDeepLink(initialLink);
+      final Uri? initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        _handleDeepLink(initialUri);
       }
-    } on PlatformException catch (e) {
-      // Gérer l'erreur silencieusement (plugin non initialisé)
-      print('⚠️ Deep linking non disponible: ${e.message}');
     } catch (e) {
-      // Autres erreurs
-      print('⚠️ Erreur deep linking: $e');
+      print('⚠️ Deep linking non disponible: $e');
     }
 
     // Écouter les liens entrants (si l'app est déjà ouverte)
     try {
-      _linkSubscription = linkStream.listen(
-        (String? link) {
-          if (link != null) {
-            _handleDeepLink(link);
-          }
+      _linkSubscription = _appLinks.uriLinkStream.listen(
+        (Uri uri) {
+          _handleDeepLink(uri);
         },
         onError: (err) {
-          // Gérer l'erreur silencieusement
           print('⚠️ Erreur stream deep linking: $err');
         },
       );
@@ -39,10 +33,9 @@ class DeepLinkService {
     }
   }
 
-  void _handleDeepLink(String link) {
-    print('🔗 Deep link reçu: $link');
+  void _handleDeepLink(Uri uri) {
+    print('🔗 Deep link reçu: $uri');
 
-    final uri = Uri.parse(link);
     String? groupId;
 
     // Format 1: pariba://join-group/{groupId}

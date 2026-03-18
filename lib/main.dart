@@ -23,6 +23,7 @@ import 'core/services/deep_link_service.dart';
 import 'presentation/pages/home/improved_dashboard_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 import 'presentation/widgets/deep_link_handler.dart';
+import 'presentation/blocs/preferences/preferences_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,6 +71,7 @@ class PariBaApp extends StatelessWidget {
         BlocProvider(create: (context) => di.sl<PaymentBloc>()),
         BlocProvider(create: (context) => di.sl<TourBloc>()),
         BlocProvider(create: (context) => di.sl<JoinRequestBloc>()),
+        BlocProvider(create: (context) => di.sl<PreferencesBloc>()),
       ],
       child: DeepLinkHandler(
         child: MaterialApp(

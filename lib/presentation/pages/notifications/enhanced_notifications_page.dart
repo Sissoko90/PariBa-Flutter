@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/constants/app_constants.dart';
@@ -8,8 +10,6 @@ import '../../blocs/notification/notification_event.dart';
 import '../../blocs/notification/notification_state.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../core/services/invitation_service.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter/services.dart';
 import '../groups/accept_invitation_page.dart';
 import '../../blocs/group/group_bloc.dart';
 import '../../blocs/group/group_event.dart';
@@ -22,78 +22,47 @@ class EnhancedNotificationsPage extends StatefulWidget {
       _EnhancedNotificationsPageState();
 }
 
-class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
+class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage>
+    with SingleTickerProviderStateMixin {
   String _filter = 'all';
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     context.read<NotificationBloc>().add(const LoadNotificationsEvent());
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text(
+          'Notifications',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              switch (value) {
-                case 'mark_all_read':
-                  context.read<NotificationBloc>().add(
-                    const MarkAllNotificationsAsReadEvent(),
-                  );
-                  break;
-                case 'delete_all':
-                  _showDeleteAllDialog(context);
-                  break;
-                case 'refresh':
-                  context.read<NotificationBloc>().add(
-                    const RefreshNotificationsEvent(),
-                  );
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'mark_all_read',
-                child: Row(
-                  children: [
-                    Icon(Icons.done_all),
-                    SizedBox(width: 8),
-                    Text('Tout marquer comme lu'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'delete_all',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_sweep, color: AppColors.error),
-                    SizedBox(width: 8),
-                    Text(
-                      'Tout supprimer',
-                      style: TextStyle(color: AppColors.error),
-                    ),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'refresh',
-                child: Row(
-                  children: [
-                    Icon(Icons.refresh),
-                    SizedBox(width: 8),
-                    Text('Actualiser'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+        backgroundColor: AppColors.primary, // ✅ Couleur d'origine conservée
+        foregroundColor: Colors.white,
+        actions: [_buildPopupMenu()],
       ),
       body: Column(
         children: [
@@ -102,33 +71,11 @@ class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
             child: BlocBuilder<NotificationBloc, NotificationState>(
               builder: (context, state) {
                 if (state is NotificationLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return _buildLoadingState();
                 }
 
                 if (state is NotificationError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: AppColors.error,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(state.message),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.read<NotificationBloc>().add(
-                              const LoadNotificationsEvent(),
-                            );
-                          },
-                          child: const Text(AppConstants.notificationRetry),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildErrorState(state.message);
                 }
 
                 if (state is NotificationLoaded) {
@@ -141,17 +88,27 @@ class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
                   }
 
                   return RefreshIndicator(
-                    onRefresh: () async {
-                      context.read<NotificationBloc>().add(
-                        const RefreshNotificationsEvent(),
-                      );
-                    },
+                    onRefresh: _refreshNotifications,
+                    color: AppColors.primary,
                     child: ListView.builder(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(12),
                       itemCount: filteredNotifications.length,
                       itemBuilder: (context, index) {
                         final notification = filteredNotifications[index];
-                        return _buildNotificationCard(context, notification);
+                        return TweenAnimationBuilder(
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 300 + (index * 50)),
+                          curve: Curves.easeOut,
+                          builder: (context, double opacity, child) {
+                            return Opacity(
+                              opacity: opacity,
+                              child: _buildNotificationCard(
+                                context,
+                                notification,
+                              ),
+                            );
+                          },
+                        );
                       },
                     ),
                   );
@@ -166,33 +123,622 @@ class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
     );
   }
 
+  Widget _buildPopupMenu() {
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.more_vert, color: Colors.white),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      onSelected: (value) {
+        switch (value) {
+          case 'mark_all_read':
+            context.read<NotificationBloc>().add(
+              const MarkAllNotificationsAsReadEvent(),
+            );
+            _showSnackBar('Toutes les notifications marquées comme lues');
+            HapticFeedback.lightImpact();
+            break;
+          case 'delete_all':
+            _showDeleteAllDialog(context);
+            break;
+          case 'refresh':
+            context.read<NotificationBloc>().add(
+              const RefreshNotificationsEvent(),
+            );
+            HapticFeedback.mediumImpact();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'mark_all_read',
+          child: Row(
+            children: [
+              Icon(Icons.done_all, color: AppColors.success, size: 20),
+              SizedBox(width: 12),
+              Text('Tout marquer comme lu'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'delete_all',
+          child: Row(
+            children: [
+              Icon(Icons.delete_sweep, color: AppColors.error, size: 20),
+              SizedBox(width: 12),
+              Text('Tout supprimer', style: TextStyle(color: AppColors.error)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'refresh',
+          child: Row(
+            children: [
+              Icon(Icons.refresh, color: AppColors.info, size: 20),
+              SizedBox(width: 12),
+              Text('Actualiser'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFilterChips() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildAnimatedFilterChip('Toutes', 'all', 0),
+            const SizedBox(width: 8),
+            _buildAnimatedFilterChip('Non lues', 'unread', 1),
+            const SizedBox(width: 8),
+            _buildAnimatedFilterChip('Lues', 'read', 2),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedFilterChip(String label, String value, int index) {
+    final isSelected = _filter == value;
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0.8, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      curve: Curves.elasticOut,
+      builder: (context, double scale, child) {
+        return Transform.scale(
+          scale: scale,
+          child: FilterChip(
+            label: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            selected: isSelected,
+            onSelected: (selected) {
+              setState(() => _filter = value);
+              HapticFeedback.lightImpact();
+            },
+            backgroundColor: Colors.grey.shade100,
+            selectedColor: AppColors.primary,
+            checkmarkColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            elevation: isSelected ? 4 : 0,
+            shadowColor: AppColors.primary.withOpacity(0.3),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildFilterChip(AppConstants.notificationFilterAll, 'all'),
-          const SizedBox(width: 8),
-          _buildFilterChip(AppConstants.notificationFilterUnread, 'unread'),
-          const SizedBox(width: 8),
-          _buildFilterChip(AppConstants.notificationFilterRead, 'read'),
+          TweenAnimationBuilder(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.elasticOut,
+            builder: (context, double scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
+                    strokeWidth: 3,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Chargement des notifications...',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = _filter == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _filter = value;
-        });
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: TweenAnimationBuilder(
+          tween: Tween<double>(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+          builder: (context, double opacity, child) {
+            return Opacity(
+              opacity: opacity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: AppColors.error,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Oups ! Une erreur est survenue',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      context.read<NotificationBloc>().add(
+                        const LoadNotificationsEvent(),
+                      );
+                      HapticFeedback.mediumImpact();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: TweenAnimationBuilder(
+            tween: Tween<double>(begin: 0.8, end: 1.0),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.elasticOut,
+            builder: (context, double scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.notifications_off_outlined,
+                        size: 80,
+                        color: AppColors.primary.withOpacity(0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      'Aucune notification',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _filter == 'unread'
+                          ? "Vous n'avez aucune notification non lue"
+                          : "Vous n'avez aucune notification pour le moment",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _filter == 'unread'
+                          ? "Les nouvelles notifications apparaîtront ici"
+                          : "Les notifications de vos activités apparaîtront ici",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary.withOpacity(0.7),
+                      ),
+                    ),
+                    if (_filter != 'all') ...[
+                      const SizedBox(height: 24),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() => _filter = 'all');
+                          HapticFeedback.lightImpact();
+                        },
+                        icon: const Icon(Icons.remove_red_eye),
+                        label: const Text('Voir toutes les notifications'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationCard(
+    BuildContext context,
+    NotificationModel notification,
+  ) {
+    final iconData = _getIconForType(notification.type);
+    final color = _getColorForType(notification.type);
+    final isInvitation = notification.type.toUpperCase().contains('INVITATION');
+
+    return Dismissible(
+      key: Key(notification.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: TweenAnimationBuilder(
+          tween: Tween<double>(begin: 0.5, end: 1.0),
+          duration: const Duration(milliseconds: 200),
+          builder: (context, double opacity, child) {
+            return Opacity(
+              opacity: opacity,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Supprimer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.delete, color: Colors.white),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+      confirmDismiss: (direction) async {
+        HapticFeedback.heavyImpact();
+        return await _showDeleteConfirmationDialog(context);
       },
-      selectedColor: AppColors.primary.withOpacity(0.2),
-      checkmarkColor: AppColors.primary,
+      onDismissed: (direction) {
+        context.read<NotificationBloc>().add(
+          DeleteNotificationEvent(notification.id),
+        );
+        _showSnackBar('Notification supprimée', isSuccess: false);
+      },
+      child: TweenAnimationBuilder(
+        tween: Tween<double>(begin: 0.95, end: 1.0),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        builder: (context, double scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: notification.readFlag
+                    ? Colors.white
+                    : color.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    if (!notification.readFlag) {
+                      context.read<NotificationBloc>().add(
+                        MarkNotificationAsReadEvent(notification.id),
+                      );
+                      HapticFeedback.selectionClick();
+                      _showSnackBar('Notification marquée comme lue');
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Icône animée
+                        TweenAnimationBuilder(
+                          tween: Tween<double>(begin: 0.8, end: 1.0),
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.elasticOut,
+                          builder: (context, double scale, child) {
+                            return Transform.scale(
+                              scale: scale,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(iconData, color: color, size: 28),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Contenu
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      notification.title,
+                                      style: TextStyle(
+                                        fontWeight: notification.readFlag
+                                            ? FontWeight.normal
+                                            : FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!notification.readFlag)
+                                    TweenAnimationBuilder(
+                                      tween: Tween<double>(
+                                        begin: 0.5,
+                                        end: 1.0,
+                                      ),
+                                      duration: const Duration(
+                                        milliseconds: 500,
+                                      ),
+                                      curve: Curves.elasticOut,
+                                      builder: (context, double scale, child) {
+                                        return Transform.scale(
+                                          scale: scale,
+                                          child: Container(
+                                            width: 10,
+                                            height: 10,
+                                            margin: const EdgeInsets.only(
+                                              left: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: color,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: color.withOpacity(0.5),
+                                                  blurRadius: 4,
+                                                  spreadRadius: 1,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                notification.body,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: notification.readFlag
+                                      ? AppColors.textSecondary
+                                      : AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 14,
+                                    color: AppColors.textSecondary.withOpacity(
+                                      0.7,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    DateFormatter.formatRelative(
+                                      notification.createdAt,
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary
+                                          .withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isInvitation) ...[
+                                const SizedBox(height: 12),
+                                TweenAnimationBuilder(
+                                  tween: Tween<double>(begin: 0.9, end: 1.0),
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.elasticOut,
+                                  builder: (context, double scale, child) {
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: Row(
+                                        children: [
+                                          ElevatedButton.icon(
+                                            onPressed: () =>
+                                                _handleInvitationTap(
+                                                  context,
+                                                  notification,
+                                                ),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppColors.primary,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 8,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                              elevation: 2,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.check_circle,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Accepter'),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          OutlinedButton.icon(
+                                            onPressed: () {
+                                              if (notification.invitationCode !=
+                                                  null) {
+                                                Clipboard.setData(
+                                                  ClipboardData(
+                                                    text: notification
+                                                        .invitationCode!,
+                                                  ),
+                                                );
+                                                _showSnackBar('Code copié !');
+                                                HapticFeedback.lightImpact();
+                                              }
+                                            },
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: AppColors.info,
+                                              side: BorderSide(
+                                                color: AppColors.info
+                                                    .withOpacity(0.5),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 8,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                            ),
+                                            icon: const Icon(
+                                              Icons.copy,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Copier code'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -209,55 +755,27 @@ class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
     }
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.notifications_off_outlined,
-            size: 100,
-            color: AppColors.textSecondary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            AppConstants.notificationEmptyTitle,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _filter == 'unread'
-                ? AppConstants.notificationEmptyUnread
-                : AppConstants.notificationEmptyAll,
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
+  Future<void> _refreshNotifications() async {
+    context.read<NotificationBloc>().add(const RefreshNotificationsEvent());
+    HapticFeedback.mediumImpact();
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
-  Widget _buildNotificationCard(
-    BuildContext context,
-    NotificationModel notification,
-  ) {
-    final iconData = _getIconForType(notification.type);
-    final color = _getColorForType(notification.type);
-
-    return Dismissible(
-      key: Key(notification.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: AppColors.error,
-        child: const Icon(Icons.delete, color: Colors.white, size: 32),
-      ),
-      confirmDismiss: (direction) async {
-        return await showDialog(
+  Future<bool> _showDeleteConfirmationDialog(BuildContext context) async {
+    return await showDialog<bool>(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text('Confirmer la suppression'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber, color: AppColors.warning, size: 28),
+                  SizedBox(width: 12),
+                  Text('Confirmation'),
+                ],
+              ),
               content: const Text(
                 'Voulez-vous vraiment supprimer cette notification ?',
               ),
@@ -266,104 +784,19 @@ class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
                   onPressed: () => Navigator.of(context).pop(false),
                   child: const Text('Annuler'),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Supprimer'),
                 ),
               ],
             );
           },
-        );
-      },
-      onDismissed: (direction) {
-        context.read<NotificationBloc>().add(
-          DeleteNotificationEvent(notification.id),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Notification supprimée'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      },
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        color: notification.readFlag ? null : color.withOpacity(0.05),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
-            child: Icon(iconData, color: color),
-          ),
-          title: Text(
-            notification.title,
-            style: TextStyle(
-              fontWeight: notification.readFlag
-                  ? FontWeight.normal
-                  : FontWeight.bold,
-            ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Text(notification.body),
-              const SizedBox(height: 4),
-              Text(
-                DateFormatter.formatRelative(notification.createdAt),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              // Bouton d'action pour les invitations
-              if (notification.type.toUpperCase().contains('INVITATION')) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          _handleInvitationTap(context, notification),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: Size.zero,
-                      ),
-                      icon: const Icon(Icons.check_circle, size: 16),
-                      label: const Text(
-                        'Rejoindre',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-          trailing: !notification.readFlag
-              ? Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                )
-              : null,
-          onTap: () {
-            if (!notification.readFlag) {
-              context.read<NotificationBloc>().add(
-                MarkNotificationAsReadEvent(notification.id),
-              );
-            }
-          },
-        ),
-      ),
-    );
+        ) ??
+        false;
   }
 
   void _showDeleteAllDialog(BuildContext context) {
@@ -371,36 +804,68 @@ class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Confirmer la suppression'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber, color: AppColors.warning, size: 28),
+              SizedBox(width: 12),
+              Text('Confirmer la suppression'),
+            ],
+          ),
           content: const Text(
-            'Voulez-vous vraiment supprimer toutes les notifications ?',
+            'Voulez-vous vraiment supprimer TOUTES vos notifications ? Cette action est irréversible.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Annuler'),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 context.read<NotificationBloc>().add(
                   const DeleteAllNotificationsEvent(),
                 );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Toutes les notifications ont été supprimées',
-                    ),
-                    duration: Duration(seconds: 2),
-                  ),
+                _showSnackBar(
+                  'Toutes les notifications ont été supprimées',
+                  isSuccess: false,
                 );
+                HapticFeedback.heavyImpact();
               },
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Tout supprimer'),
             ),
           ],
         );
       },
+    );
+  }
+
+  void _showSnackBar(String message, {bool isSuccess = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle : Icons.info,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isSuccess ? AppColors.success : AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+      ),
     );
   }
 
@@ -450,21 +915,43 @@ class _EnhancedNotificationsPageState extends State<EnhancedNotificationsPage> {
     final invitationCode = notification.invitationCode;
 
     if (invitationCode == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Code d\'invitation non trouvé dans la notification'),
-          backgroundColor: AppColors.error,
-        ),
+      _showSnackBar(
+        'Code d\'invitation non trouvé dans la notification',
+        isSuccess: false,
       );
       return;
     }
 
-    showDialog(
+    HapticFeedback.mediumImpact();
+
+    showModalBottomSheet(
       context: context,
-      builder: (BuildContext dialogContext) => _InvitationDialog(
-        invitationCode: invitationCode,
-        notificationTitle: notification.title,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (BuildContext context) {
+        return TweenAnimationBuilder(
+          tween: Tween<double>(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, double scale, child) {
+            return Transform.scale(
+              scale: scale,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: _InvitationDialog(
+                  invitationCode: invitationCode,
+                  notificationTitle: notification.title,
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -482,18 +969,38 @@ class _InvitationDialog extends StatefulWidget {
   State<_InvitationDialog> createState() => _InvitationDialogState();
 }
 
-class _InvitationDialogState extends State<_InvitationDialog> {
+class _InvitationDialogState extends State<_InvitationDialog>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
   late InvitationService _invitationService;
 
   @override
   void initState() {
     super.initState();
     _invitationService = InvitationService(client: http.Client());
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.elasticOut,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _acceptInvitation() async {
     setState(() => _isLoading = true);
+    HapticFeedback.mediumImpact();
 
     try {
       final result = await _invitationService.acceptInvitation(
@@ -504,20 +1011,30 @@ class _InvitationDialogState extends State<_InvitationDialog> {
 
       if (result['success'] == true) {
         Navigator.of(context).pop();
-
-        // Recharger la liste des groupes
         context.read<GroupBloc>().add(const LoadGroupsEvent());
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              result['message'] ?? 'Invitation acceptée avec succès',
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    result['message'] ?? 'Invitation acceptée avec succès',
+                  ),
+                ),
+              ],
             ),
             backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(16),
           ),
         );
 
-        // Rediriger vers la page des groupes après 1 seconde
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
@@ -530,10 +1047,23 @@ class _InvitationDialogState extends State<_InvitationDialog> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                result['message'] ?? 'Erreur lors de l\'acceptation',
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      result['message'] ?? 'Erreur lors de l\'acceptation',
+                    ),
+                  ),
+                ],
               ),
               backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(16),
             ),
           );
         }
@@ -542,8 +1072,19 @@ class _InvitationDialogState extends State<_InvitationDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Erreur: $e')),
+              ],
+            ),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -557,16 +1098,29 @@ class _InvitationDialogState extends State<_InvitationDialog> {
   void _copyCodeAndNavigate() {
     Clipboard.setData(ClipboardData(text: widget.invitationCode));
     Navigator.of(context).pop();
+    HapticFeedback.lightImpact();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Code copié! Redirection vers "Rejoindre un groupe"...'),
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Code copié ! Redirection vers "Rejoindre un groupe"...',
+              ),
+            ),
+          ],
+        ),
         backgroundColor: AppColors.success,
-        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
       ),
     );
 
-    // Naviguer vers la page AcceptInvitationPage avec le code pré-rempli
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         Navigator.push(
@@ -582,134 +1136,246 @@ class _InvitationDialogState extends State<_InvitationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.info.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
             ),
-            child: const Icon(Icons.group_add, color: AppColors.info),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text('Invitation de groupe', style: TextStyle(fontSize: 18)),
-          ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.notificationTitle,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.greyLight.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.greyLight),
+          ],
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 50,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: 20),
+            Row(
               children: [
-                const Icon(
-                  Icons.vpn_key,
-                  size: 20,
-                  color: AppColors.textSecondary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  widget.invitationCode,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 18),
-                  onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(text: widget.invitationCode),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Code copié dans le presse-papiers'),
-                        backgroundColor: AppColors.success,
-                        duration: Duration(seconds: 1),
+                TweenAnimationBuilder(
+                  tween: Tween<double>(begin: 0.8, end: 1.0),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.elasticOut,
+                  builder: (context, double scale, child) {
+                    return Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.info.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.group_add,
+                          color: AppColors.info,
+                          size: 28,
+                        ),
                       ),
                     );
                   },
-                  tooltip: 'Copier le code',
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    'Invitation de groupe',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Choisissez une action :',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Bouton Accepter directement
-            ElevatedButton.icon(
-              onPressed: _isLoading ? null : _acceptInvitation,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
               ),
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.notificationTitle,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Code d\'invitation :',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Text(
+                            widget.invitationCode,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
                       ),
-                    )
-                  : const Icon(Icons.check_circle),
-              label: const Text('Accepter directement'),
-            ),
-            const SizedBox(height: 8),
-            // Bouton Copier et rejoindre
-            OutlinedButton.icon(
-              onPressed: _isLoading ? null : _copyCodeAndNavigate,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.info,
-                side: const BorderSide(color: AppColors.info),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: widget.invitationCode),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Code copié !'),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                          HapticFeedback.lightImpact();
+                        },
+                        icon: const Icon(Icons.copy),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey.shade100,
+                          padding: const EdgeInsets.all(12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              icon: const Icon(Icons.edit),
-              label: const Text('Saisir manuellement'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
+            const Text(
+              'Choisissez une action :',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Bouton Accepter directement
+            TweenAnimationBuilder(
+              tween: Tween<double>(begin: 0.95, end: 1.0),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              builder: (context, double scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _acceptInvitation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 4,
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle),
+                              SizedBox(width: 12),
+                              Text(
+                                'Accepter directement',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            // Bouton Copier et rejoindre
+            TweenAnimationBuilder(
+              tween: Tween<double>(begin: 0.95, end: 1.0),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              builder: (context, double scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: OutlinedButton(
+                    onPressed: _isLoading ? null : _copyCodeAndNavigate,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.info,
+                      side: BorderSide(color: AppColors.info.withOpacity(0.5)),
+                      minimumSize: const Size(double.infinity, 54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit),
+                        SizedBox(width: 12),
+                        Text(
+                          'Saisir manuellement',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
             // Bouton Annuler
             TextButton(
               onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
               child: const Text('Annuler'),
             ),
+            const SizedBox(height: 8),
           ],
         ),
-      ],
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      ),
     );
   }
 }

@@ -40,6 +40,9 @@ class _HomeAdvertisementSectionState extends State<HomeAdvertisementSection> {
   }
 
   Future<void> _loadAdvertisements() async {
+    // Vérifier si le widget est toujours monté avant de commencer
+    if (!mounted) return;
+
     try {
       debugPrint('🚀 [HOME_ADS] Début du chargement des publicités...');
 
@@ -48,17 +51,27 @@ class _HomeAdvertisementSectionState extends State<HomeAdvertisementSection> {
       final banners = await widget.advertisementDataSource.getAdvertisements(
         'BANNER',
       );
+
+      // Vérifier à nouveau après l'appel async
+      if (!mounted) return;
+
       debugPrint('✅ [HOME_ADS] BANNER: ${banners.length} publicités');
 
       debugPrint('📥 [HOME_ADS] Chargement POPUP...');
       final popups = await widget.advertisementDataSource.getAdvertisements(
         'POPUP',
       );
+
+      if (!mounted) return;
+
       debugPrint('✅ [HOME_ADS] POPUP: ${popups.length} publicités');
 
       debugPrint('📥 [HOME_ADS] Chargement FULLSCREEN...');
       final fullscreens = await widget.advertisementDataSource
           .getAdvertisements('FULLSCREEN');
+
+      if (!mounted) return;
+
       debugPrint('✅ [HOME_ADS] FULLSCREEN: ${fullscreens.length} publicités');
 
       setState(() {
@@ -90,15 +103,19 @@ class _HomeAdvertisementSectionState extends State<HomeAdvertisementSection> {
         });
       }
     } catch (e, stackTrace) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
       debugPrint('❌ [HOME_ADS] Erreur lors du chargement des publicités: $e');
       debugPrint('❌ [HOME_ADS] StackTrace: $stackTrace');
     }
   }
 
   void _showPopupAdsCarousel() {
+    if (!mounted) return;
+
     setState(() {
       _popupShown = true;
     });
@@ -122,6 +139,8 @@ class _HomeAdvertisementSectionState extends State<HomeAdvertisementSection> {
   }
 
   void _showPopupAd(AdvertisementModel ad) {
+    if (!mounted) return;
+
     setState(() {
       _popupShown = true;
     });
@@ -145,6 +164,8 @@ class _HomeAdvertisementSectionState extends State<HomeAdvertisementSection> {
   }
 
   void _showFullscreenAdsCarousel() {
+    if (!mounted) return;
+
     setState(() {
       _fullscreenShown = true;
     });
@@ -166,6 +187,8 @@ class _HomeAdvertisementSectionState extends State<HomeAdvertisementSection> {
   }
 
   void _showFullscreenAd(AdvertisementModel ad) {
+    if (!mounted) return;
+
     setState(() {
       _fullscreenShown = true;
     });
@@ -229,9 +252,11 @@ class _HomeAdvertisementSectionState extends State<HomeAdvertisementSection> {
       onImpression: _recordImpression,
       onClick: _recordClick,
       onClose: () {
-        setState(() {
-          _bannerAds = [];
-        });
+        if (mounted) {
+          setState(() {
+            _bannerAds = [];
+          });
+        }
       },
     );
   }

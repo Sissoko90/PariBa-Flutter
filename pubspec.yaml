@@ -87,11 +87,12 @@ dependencies:
   go_router: ^13.2.0
   
   # Deep Linking
-  uni_links: ^0.5.1
+ # uni_links: ^0.5.2
   
   # Forms & Validation
   formz: ^0.7.0
   
+
   # QR Code
   qr_flutter: ^4.1.0
   mobile_scanner: ^4.0.1
@@ -105,6 +106,7 @@ dependencies:
   
   # Splash Screen
   flutter_native_splash: ^2.3.10
+  app_links: ^6.4.1
 
 dev_dependencies:
   flutter_test:

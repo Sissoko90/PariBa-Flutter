@@ -4,7 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../blocs/group/group_bloc.dart';
 import '../../blocs/group/group_state.dart';
-import '../../blocs/group/group_event.dart'; // AJOUTEZ CET IMPORT
+import '../../blocs/group/group_event.dart';
 import '../../widgets/common/loading_indicator.dart';
 import 'group_details_page.dart';
 import 'create_group_page.dart';
@@ -22,7 +22,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
   @override
   void initState() {
     super.initState();
-    // Charger les groupes au démarrage après la construction du widget
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<GroupBloc>().add(const LoadGroupsEvent());
     });
@@ -32,7 +31,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
   Widget build(BuildContext context) {
     return BlocListener<GroupBloc, GroupState>(
       listener: (context, state) {
-        // Recharger la liste après suppression, sortie ou modification de groupe
         if (state is GroupDeleted ||
             state is GroupLeft ||
             state is GroupDetailsLoaded) {
@@ -44,18 +42,49 @@ class _GroupsListPageState extends State<GroupsListPage> {
           title: const Text('Mes Groupes'),
           centerTitle: true,
           actions: [
-            // Bouton pour rejoindre un groupe
-            IconButton(
+            // ✅ BOUTON UNIQUE dans l'AppBar avec menu déroulant
+            PopupMenuButton<String>(
               icon: const Icon(Icons.group_add),
-              tooltip: 'Rejoindre un groupe',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AcceptInvitationPage(),
-                  ),
-                );
+              tooltip: 'Options de groupe',
+              onSelected: (value) {
+                if (value == 'create') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateGroupPage(),
+                    ),
+                  );
+                } else if (value == 'join') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AcceptInvitationPage(),
+                    ),
+                  );
+                }
               },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'create',
+                  child: Row(
+                    children: [
+                      Icon(Icons.add_circle_outline, color: AppColors.primary),
+                      SizedBox(width: 12),
+                      Text('Créer un groupe'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'join',
+                  child: Row(
+                    children: [
+                      Icon(Icons.group_add, color: AppColors.secondary),
+                      SizedBox(width: 12),
+                      Text('Rejoindre un groupe'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -86,7 +115,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: () {
-                        // CORRECTION ICI : Utilisez context.read<GroupBloc>().add()
                         context.read<GroupBloc>().add(const LoadGroupsEvent());
                       },
                       icon: const Icon(Icons.refresh),
@@ -108,8 +136,7 @@ class _GroupsListPageState extends State<GroupsListPage> {
             return const SizedBox.shrink();
           },
         ),
-        // Floating Action Button avec menu
-        floatingActionButton: _buildFloatingActionButton(context),
+        // ❌ FLOATING ACTION BUTTON SUPPRIMÉ
       ),
     );
   }
@@ -155,62 +182,29 @@ class _GroupsListPageState extends State<GroupsListPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            // Boutons d'action pour état vide
-            Column(
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CreateGroupPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Text(
-                      'Créer un nouveau groupe',
-                      style: TextStyle(fontSize: 16),
+
+            // Message indiquant d'utiliser le menu dans l'AppBar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_circle, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Utilisez le menu + dans la barre pour créer ou rejoindre',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AcceptInvitationPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.group_add),
-                    label: const Text(
-                      'Rejoindre un groupe existant',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(color: AppColors.primary),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -233,14 +227,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
         itemBuilder: (context, index) {
           final group = groups[index];
 
-          // 🔍 DEBUG: Vérifier currentUserRole
-          if (groups.isNotEmpty) {
-            print('🔍 DEBUG GroupsListPage - Premier groupe: ${groups[0].nom}');
-            print(
-              '🔍 DEBUG GroupsListPage - currentUserRole: ${groups[0].currentUserRole}',
-            );
-          }
-
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(
@@ -262,7 +248,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    // Avatar du groupe
                     Container(
                       width: 56,
                       height: 56,
@@ -277,13 +262,10 @@ class _GroupsListPageState extends State<GroupsListPage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-
-                    // Informations du groupe
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Nom du groupe
                           Row(
                             children: [
                               Expanded(
@@ -298,7 +280,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              // Badge si admin
                               if (group.currentUserRole != null &&
                                   group.currentUserRole == 'ADMIN') ...[
                                 const SizedBox(width: 8),
@@ -314,9 +295,7 @@ class _GroupsListPageState extends State<GroupsListPage> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    _getStatusLabel(
-                                      group.status ?? 'active',
-                                    ), // <-- UTILISEZ group.status
+                                    _getStatusLabel(group.status ?? 'active'),
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
@@ -330,8 +309,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
                             ],
                           ),
                           const SizedBox(height: 6),
-
-                          // Montant et fréquence
                           Row(
                             children: [
                               Icon(
@@ -372,11 +349,8 @@ class _GroupsListPageState extends State<GroupsListPage> {
                             ],
                           ),
                           const SizedBox(height: 6),
-
-                          // Statut et nombre de membres
                           Row(
                             children: [
-                              // Statut - AJOUTEZ UNE PROPRIÉTÉ status OU UTILISEZ UNE VALEUR PAR DÉFAUT
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -387,7 +361,7 @@ class _GroupsListPageState extends State<GroupsListPage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  'Actif', // Valeur par défaut ou ajoutez une propriété status
+                                  'Actif',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -396,7 +370,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Nombre de membres
                               Icon(
                                 Icons.people_outline,
                                 size: 14,
@@ -404,7 +377,7 @@ class _GroupsListPageState extends State<GroupsListPage> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${group.totalTours} membres', // Utilisez group.totalTours comme valeur
+                                '${group.totalTours} membres',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textSecondary,
@@ -415,9 +388,7 @@ class _GroupsListPageState extends State<GroupsListPage> {
                         ],
                       ),
                     ),
-
                     const SizedBox(width: 12),
-                    // Indicateur de navigation
                     Icon(
                       Icons.chevron_right,
                       size: 20,
@@ -433,171 +404,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
     );
   }
 
-  Widget _buildFloatingActionButton(BuildContext context) {
-    return FloatingActionButton.extended(
-      onPressed: () {
-        _showCreateOrJoinModal(context);
-      },
-      icon: const Icon(Icons.add),
-      label: const Text('Groupe'),
-      backgroundColor: AppColors.primary,
-      foregroundColor: AppColors.white,
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    );
-  }
-
-  void _showCreateOrJoinModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Poignée de la modal
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.greyLight,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Titre
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Options de groupe',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Choisissez comment vous souhaitez participer à un groupe',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Boutons d'action
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  // Créer un groupe
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CreateGroupPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Créer un groupe',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Créez un nouveau groupe de tontine',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.white,
-                      foregroundColor: AppColors.textPrimary,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: AppColors.greyLight, width: 1),
-                      ),
-                      alignment: Alignment.centerLeft,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Rejoindre un groupe
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AcceptInvitationPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.group_add),
-                    label: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Rejoindre un groupe',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Rejoignez un groupe avec un code d\'invitation',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.white,
-                      foregroundColor: AppColors.textPrimary,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: AppColors.greyLight, width: 1),
-                      ),
-                      alignment: Alignment.centerLeft,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Méthodes utilitaires pour le statut
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'active':
