@@ -4,10 +4,14 @@ class ApiConstants {
 
   // Base URL - Backend Spring Boot sur port 8082
   /// Base URL for API
-  /// Pour Android Emulator, utilisez 10.0.2.2 au lieu de localhost
+  /// Pour Android Emulator, utilisez 192.168.100.198 au lieu de localhost
   /// Pour iOS Simulator, utilisez localhost ou votre IP
+
   //static const String baseUrl = 'http://10.10.10.104:8090/api/v1';
   static const String baseUrl = 'http://10.0.2.2:8090/api/v1';
+
+  //static const String baseUrl = 'http://10.10.10.104:8090/api/v1';
+
   // Auth Endpoints
   static const String login = '/auth/login';
   static const String register = '/auth/register';

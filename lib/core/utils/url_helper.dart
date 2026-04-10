@@ -1,6 +1,10 @@
 // core/utils/url_helper.dart
 class UrlHelper {
+<<<<<<< HEAD
   static const String baseIp = '10.0.2.2'; // Votre IP
+=======
+  static const String baseIp = '192.168.100.198'; // Votre IP
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
 
   static String fixPhotoUrl(String? url) {
     if (url == null || url.isEmpty) return '';
@@ -10,9 +14,9 @@ class UrlHelper {
       return url.replaceAll('localhost', baseIp);
     }
 
-    // Remplacer 10.0.2.2 (Android emulator) par l'IP si nécessaire
-    if (url.contains('10.0.2.2')) {
-      return url.replaceAll('10.0.2.2', baseIp);
+    // Remplacer 192.168.100.198 (Android emulator) par l'IP si nécessaire
+    if (url.contains('192.168.100.198')) {
+      return url.replaceAll('192.168.100.198', baseIp);
     }
 
     return url;

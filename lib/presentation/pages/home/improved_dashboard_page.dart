@@ -166,13 +166,19 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
                 ),
               );
             }
+<<<<<<< HEAD
             if (snapshot.hasError) {
               _logger.d('❌ FutureBuilder error: ${snapshot.error}');
               return const PremiumScreen(); // Par défaut non-premium si erreur
             }
             final isPremium = snapshot.data ?? false;
+=======
+            final isPremium = snapshot.data ?? false;
+            // Si premium → page "vous êtes déjà abonné"
+            // Si pas premium → PremiumScreen (qui gère aussi le pending)
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
             return isPremium
-                ? const EnhancedNotificationsPage()
+                ? _buildActiveSubscriptionPage()
                 : const PremiumScreen();
           },
         );
@@ -183,6 +189,7 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
     }
   }
 
+<<<<<<< HEAD
   Future<bool> _isPremiumUser() async {
     _logger.d('🔔 _isPremiumUser appelé');
     try {
@@ -202,6 +209,209 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
       );
     } catch (e) {
       _logger.d('💥 Exception: $e');
+      return false;
+    }
+=======
+  Widget _buildActiveSubscriptionPage() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFB),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Icône animée
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, _) => Transform.scale(
+                    scale: value,
+                    child: Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2E7D32).withOpacity(0.35),
+                            blurRadius: 28,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.verified_rounded,
+                        size: 54,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                const Text('🎉', style: TextStyle(fontSize: 36)),
+                const SizedBox(height: 8),
+
+                const Text(
+                  'Vous êtes Premium !',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Votre abonnement est actif. Profitez de toutes les fonctionnalités exclusives.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 15,
+                    height: 1.6,
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Avantages
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF2E7D32).withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _premiumBenefit(
+                        Icons.picture_as_pdf_rounded,
+                        'Export PDF & Excel débloqué',
+                      ),
+                      const Divider(height: 20, color: Color(0xFFB2DFDB)),
+                      _premiumBenefit(
+                        Icons.group_work_rounded,
+                        'Tontines illimitées',
+                      ),
+                      const Divider(height: 20, color: Color(0xFFB2DFDB)),
+                      _premiumBenefit(
+                        Icons.stars_rounded,
+                        'Badge Premium actif',
+                      ),
+                      const Divider(height: 20, color: Color(0xFFB2DFDB)),
+                      _premiumBenefit(
+                        Icons.people_alt_rounded,
+                        'Gestion multi-compte',
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Bouton notifications
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EnhancedNotificationsPage(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.notifications_rounded),
+                    label: const Text(
+                      'Voir mes notifications',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
+  }
+
+  Widget _premiumBenefit(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32).withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: const Color(0xFF2E7D32), size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1B5E20),
+            ),
+          ),
+        ),
+        const Icon(
+          Icons.check_circle_rounded,
+          color: Color(0xFF2E7D32),
+          size: 18,
+        ),
+      ],
+    );
+  }
+
+  Future<bool> _isPremiumUser() async {
+    try {
+      final repository = di.sl<SubscriptionRepository>();
+
+      // Vérification 1 : abonnement actif direct
+      final subResult = await repository.getMySubscription();
+      final hasActiveSub = subResult.fold((failure) => false, (sub) {
+        _logger.d('✅ Sub: $sub, active: ${sub?.active}');
+        return sub != null && (sub.active == true);
+      });
+
+      if (hasActiveSub) return true;
+
+      // Vérification 2 : demande approuvée (fallback)
+      final requestsResult = await repository.getMyRequests();
+      return requestsResult.fold((failure) => false, (requests) {
+        final hasApproved = requests.any((r) => r.isApproved);
+        _logger.d('✅ Has approved request: $hasApproved');
+        return hasApproved;
+      });
+    } catch (e) {
+      _logger.e('💥 Exception: $e');
       return false;
     }
   }

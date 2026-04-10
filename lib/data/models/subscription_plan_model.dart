@@ -12,6 +12,8 @@ class SubscriptionPlanModel {
   final bool canExportExcel;
   final bool active;
 
+  final bool isActive;
+
   SubscriptionPlanModel({
     required this.id,
     required this.type,
@@ -19,6 +21,9 @@ class SubscriptionPlanModel {
     this.description,
     required this.monthlyPrice,
     this.annualPrice,
+
+    this.isActive = false,
+
     required this.maxGroups,
     required this.canExportPdf,
     required this.canExportExcel,
@@ -37,6 +42,8 @@ class SubscriptionPlanModel {
       canExportPdf: json['canExportPdf'] ?? false,
       canExportExcel: json['canExportExcel'] ?? false,
       active: json['active'] ?? true,
+
+      isActive: json['status'] == 'ACTIVE',
     );
   }
 }

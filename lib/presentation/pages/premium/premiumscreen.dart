@@ -1,9 +1,15 @@
+// lib/presentation/pages/premium_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../di/injection.dart' as di;
 import '../../../domain/repositories/subscription_repository.dart';
 import '../../../data/models/subscription_plan_model.dart';
 import '../../../data/models/subscription_request_model.dart';
+<<<<<<< HEAD
+=======
+import '../../../core/utils/error_message_mapper.dart';
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -24,9 +30,17 @@ class _PremiumScreenState extends State<PremiumScreen>
 
   List<SubscriptionPlanModel> _plans = [];
   SubscriptionPlanModel? _selectedPlan;
+<<<<<<< HEAD
   String _billingPeriod = 'monthly';
   bool _isLoading = true;
   bool _isSubmitting = false;
+=======
+  SubscriptionPlanModel? _currentSubscription;
+  String _billingPeriod = 'monthly';
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+  bool _hasActiveSubscription = false;
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
   String? _error;
   SubscriptionRequestModel? _pendingRequest;
 
@@ -113,6 +127,7 @@ class _PremiumScreenState extends State<PremiumScreen>
       _isLoading = true;
       _error = null;
     });
+<<<<<<< HEAD
     final repository = di.sl<SubscriptionRepository>();
 
     final plansResult = await repository.getPlans();
@@ -136,6 +151,61 @@ class _PremiumScreenState extends State<PremiumScreen>
     });
 
     setState(() => _isLoading = false);
+=======
+
+    final repository = di.sl<SubscriptionRepository>();
+
+    // Vérifier l'abonnement actuel d'abord
+    final currentSubResult = await repository.getMySubscription();
+    await currentSubResult.fold(
+      (failure) {
+        print('⚠️ Aucun abonnement trouvé: ${failure.message}');
+      },
+      (subscription) async {
+        if (subscription != null && subscription.isActive) {
+          setState(() {
+            _currentSubscription = subscription;
+            _hasActiveSubscription = true;
+          });
+          return;
+        }
+      },
+    );
+
+    // Si déjà abonné, ne pas charger les plans
+    if (_hasActiveSubscription) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // Charger les plans disponibles
+    final plansResult = await repository.getPlans();
+    plansResult.fold(
+      (failure) {
+        setState(
+          () => _error = ErrorMessageMapper.mapErrorMessage(failure.message),
+        );
+      },
+      (plans) {
+        final paidPlans = plans.where((p) => p.type != 'FREE').toList();
+        setState(() {
+          _plans = paidPlans;
+          if (_plans.isNotEmpty) _selectedPlan = _plans.first;
+        });
+      },
+    );
+
+    // Vérifier les demandes en attente
+    final requestsResult = await repository.getMyRequests();
+    requestsResult.fold((failure) => null, (requests) {
+      try {
+        final pending = requests.firstWhere((r) => r.isPending);
+        if (mounted) setState(() => _pendingRequest = pending);
+      } catch (_) {}
+    });
+
+    if (mounted) setState(() => _isLoading = false);
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
   }
 
   Future<void> _requestSubscription() async {
@@ -158,13 +228,24 @@ class _PremiumScreenState extends State<PremiumScreen>
 
     result.fold(
       (failure) {
+<<<<<<< HEAD
+=======
+        final friendlyMessage = ErrorMessageMapper.mapErrorMessage(
+          failure.message,
+        );
+
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 8),
+<<<<<<< HEAD
                 Expanded(child: Text(failure.message)),
+=======
+                Expanded(child: Text(friendlyMessage)),
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
               ],
             ),
             backgroundColor: Colors.red.shade700,
@@ -172,6 +253,10 @@ class _PremiumScreenState extends State<PremiumScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+<<<<<<< HEAD
+=======
+            duration: const Duration(seconds: 4),
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
           ),
         );
       },
@@ -340,7 +425,18 @@ class _PremiumScreenState extends State<PremiumScreen>
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     if (!_isLoading && _pendingRequest != null) return _buildPendingView();
+=======
+    // Afficher la vue "déjà abonné" si nécessaire
+    if (!_isLoading && _hasActiveSubscription && _currentSubscription != null) {
+      return _buildAlreadySubscribedView();
+    }
+
+    if (!_isLoading && _pendingRequest != null) {
+      return _buildPendingView();
+    }
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
 
     return Scaffold(
       body: Container(
@@ -1208,12 +1304,25 @@ class _PremiumScreenState extends State<PremiumScreen>
                     );
                     if (!mounted) return;
                     result.fold(
+<<<<<<< HEAD
                       (f) => ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(f.message),
                           backgroundColor: Colors.red,
                         ),
                       ),
+=======
+                      (f) {
+                        final friendlyMessage =
+                            ErrorMessageMapper.mapErrorMessage(f.message);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(friendlyMessage),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      },
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
                       (_) {
                         setState(() => _pendingRequest = null);
                         _loadData();
@@ -1243,6 +1352,131 @@ class _PremiumScreenState extends State<PremiumScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+<<<<<<< HEAD
+  Widget _buildErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.white54),
+          const SizedBox(height: 16),
+          Text(
+            _error!,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _loadData,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Réessayer'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF2E7D32),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+=======
+  Widget _buildAlreadySubscribedView() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFB),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, _) => Transform.scale(
+                    scale: value,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2E7D32).withOpacity(0.35),
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.verified_rounded,
+                        size: 48,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const Text(
+                  'Vous êtes déjà Premium ! 🎉',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Vous bénéficiez actuellement du plan ${_currentSubscription!.name}.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF2E7D32),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Votre abonnement est actif. Vous pourrez changer de plan à son expiration.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Retour'),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(
+                      color: Color(0xFF2E7D32),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
       ),
     );
   }
@@ -1284,6 +1518,10 @@ class _PremiumFeature {
   final String description;
   final Color color;
   final Color bgColor;
+<<<<<<< HEAD
+=======
+
+>>>>>>> f6bc8a5 (Sauvegarde avant pull)
   const _PremiumFeature({
     required this.icon,
     required this.title,
