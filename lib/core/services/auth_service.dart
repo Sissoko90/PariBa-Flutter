@@ -55,18 +55,18 @@ class AuthService {
     }
   }
 
-  Future<void> saveAccessToken(String token) async {
+  Future<void> saveAccessToken(String? token) async {
     try {
       await _secureStorage.write(key: _accessTokenKey, value: token);
       print(
-        '💾 AuthService - Access token sauvegardé: ${token.substring(0, 20)}...',
+        '💾 AuthService - Access token sauvegardé: ${token?.substring(0, 20)}...',
       );
     } catch (e) {
       print('❌ AuthService - Erreur sauvegarde access token: $e');
     }
   }
 
-  Future<void> saveRefreshToken(String token) async {
+  Future<void> saveRefreshToken(String? token) async {
     try {
       await _secureStorage.write(key: _refreshTokenKey, value: token);
       print('💾 AuthService - Refresh token sauvegardé');

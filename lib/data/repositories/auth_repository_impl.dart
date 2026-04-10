@@ -26,9 +26,14 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, AuthResult>> login({
     required String identifier,
     required String password,
+    required String otpCode,
   }) async {
     try {
-      final result = await remoteDataSource.login(identifier, password);
+      final result = await remoteDataSource.login(
+        identifier,
+        password,
+        otpCode,
+      );
 
       final person = _personModelToEntity(
         PersonModel.fromJson(result['person']),
@@ -57,14 +62,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      final result = await remoteDataSource.register({
-        'prenom': prenom,
-        'nom': nom,
-        'email': email,
-        'phone': phone,
-        'password': password,
-      });
-
+      final request = RegisterRequest(
+        prenom: prenom,
+        nom: nom,
+        email: email,
+        phone: phone,
+        password: password,
+      );
+      final result = await remoteDataSource.register(request);
       final person = _personModelToEntity(
         PersonModel.fromJson(result['person']),
       );
@@ -144,10 +149,16 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> sendOtp({
     required String target,
-    required String type,
+    String? channel,
   }) async {
-    // TODO: Implement OTP sending
-    return const Right(null);
+    try {
+      await remoteDataSource.sendOtp(target, channel: channel);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
   }
 
   @override
@@ -155,8 +166,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String target,
     required String code,
   }) async {
-    // TODO: Implement OTP verification
-    return const Right(true);
+    try {
+      final isValid = await remoteDataSource.verifyOtp(target, code);
+      return Right(isValid);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
   }
 
   @override

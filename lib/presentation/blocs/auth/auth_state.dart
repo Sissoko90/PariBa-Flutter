@@ -24,10 +24,7 @@ class Authenticated extends AuthState {
   final Person person;
   final String accessToken;
 
-  const Authenticated({
-    required this.person,
-    required this.accessToken,
-  });
+  const Authenticated({required this.person, required this.accessToken});
 
   @override
   List<Object?> get props => [person, accessToken];
@@ -43,6 +40,15 @@ class AuthError extends AuthState {
   final String message;
 
   const AuthError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+class AuthSuccess extends AuthState {
+  final String message;
+
+  const AuthSuccess(this.message);
 
   @override
   List<Object?> get props => [message];

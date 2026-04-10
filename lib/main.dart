@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pariba/data/repositories/subscription_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -24,6 +25,7 @@ import 'presentation/pages/home/improved_dashboard_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 import 'presentation/widgets/deep_link_handler.dart';
 import 'presentation/blocs/preferences/preferences_bloc.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,6 +75,7 @@ class PariBaApp extends StatelessWidget {
         BlocProvider(create: (context) => di.sl<JoinRequestBloc>()),
         BlocProvider(create: (context) => di.sl<PreferencesBloc>()),
       ],
+
       child: DeepLinkHandler(
         child: MaterialApp(
           title: AppConstants.appName,

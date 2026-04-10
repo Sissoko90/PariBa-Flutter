@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+import 'package:pariba/data/repositories/subscription_repository_impl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/network/dio_client.dart';
@@ -33,7 +34,7 @@ import '../data/repositories/auth_repository_impl.dart';
 import '../data/repositories/group_repository_impl.dart';
 import '../data/repositories/contribution_repository_impl.dart';
 import '../data/repositories/join_request_repository_impl.dart';
-import '../data/repositories/subscription_repository.dart';
+import '../domain/repositories/subscription_repository.dart';
 import '../data/datasources/remote/subscription_remote_datasource.dart';
 // Domain
 import '../domain/repositories/auth_repository.dart';
@@ -168,7 +169,7 @@ Future<void> initializeDependencies() async {
     () => JoinRequestRepositoryImpl(sl()),
   );
   sl.registerLazySingleton<SubscriptionRepository>(
-    () => SubscriptionRepository(sl()),
+    () => SubscriptionRepositoryImpl(sl<SubscriptionRemoteDataSource>()),
   );
 
   // ============ Domain ============

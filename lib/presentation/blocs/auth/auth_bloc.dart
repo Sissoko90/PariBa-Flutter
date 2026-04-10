@@ -35,10 +35,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogin(LoginEvent event, Emitter<AuthState> emit) async {
     print('🔵 AuthBloc - Début login pour: ${event.identifier}');
     emit(const AuthLoading());
+    if (event.otpCode == null || event.otpCode!.isEmpty) {
+      emit(const AuthError('Code OTP requis pour la connexion'));
+      return;
+    }
 
     final result = await loginUseCase(
       identifier: event.identifier,
       password: event.password,
+      otpCode: event.otpCode!,
     );
 
     if (result.isLeft()) {
@@ -76,7 +81,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(
         Authenticated(
           person: authResult.person,
-          accessToken: authResult.accessToken,
+          accessToken: authResult.accessToken!,
         ),
       );
       print('✅ AuthBloc - État Authenticated émis avec succès');
@@ -122,6 +127,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   /// Handle Register
+  /// Handle Register
   Future<void> _onRegister(RegisterEvent event, Emitter<AuthState> emit) async {
     print('🔵 AuthBloc - Début inscription pour: ${event.email}');
     emit(const AuthLoading());
@@ -144,28 +150,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         '✅ AuthBloc - Inscription réussie pour: ${authResult.person.email}',
       );
 
-      // Save tokens using AuthService
-      await authService.saveAccessToken(authResult.accessToken);
-      await authService.savePersonId(authResult.person.id); // AJOUTÉ
-      print('💾 AuthBloc - Tokens sauvegardés via AuthService');
+      // Vérifier si on a un token
+      if (authResult.accessToken != null &&
+          authResult.accessToken!.isNotEmpty) {
+        await authService.saveAccessToken(authResult.accessToken!);
+        await authService.savePersonId(authResult.person.id);
 
-      if (authResult.refreshToken != null) {
-        await authService.saveRefreshToken(authResult.refreshToken!);
+        if (authResult.refreshToken != null) {
+          await authService.saveRefreshToken(authResult.refreshToken!);
+        }
+
+        await authService.saveUserInfo(
+          authResult.person.id,
+          authResult.person.email ?? authResult.person.phone ?? '',
+        );
+
+        emit(
+          Authenticated(
+            person: authResult.person,
+            accessToken: authResult.accessToken!,
+          ),
+        );
+      } else {
+        print('ℹ️ Inscription sans token → login requis');
+
+        emit(
+          const AuthSuccess('Inscription réussie ! Veuillez vous connecter.'),
+        );
+
+        await Future.delayed(const Duration(seconds: 2));
+        emit(const Unauthenticated());
       }
-
-      await authService.saveUserInfo(
-        authResult.person.id,
-        authResult.person.email ?? authResult.person.phone ?? '',
-      );
-
-      print('🚀 AuthBloc - Émission état Authenticated');
-      emit(
-        Authenticated(
-          person: authResult.person,
-          accessToken: authResult.accessToken,
-        ),
-      );
-      print('✅ AuthBloc - État Authenticated émis avec succès');
     }
   }
 

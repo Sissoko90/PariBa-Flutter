@@ -4,15 +4,60 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/error_message_mapper.dart';
 import '../../models/person_model.dart';
 
+/// Request DTO for registration
+class RegisterRequest {
+  final String prenom;
+  final String nom;
+  final String email;
+  final String phone;
+  final String password;
+  final String? photo;
+
+  RegisterRequest({
+    required this.prenom,
+    required this.nom,
+    required this.email,
+    required this.phone,
+    required this.password,
+    this.photo,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'prenom': prenom,
+      'nom': nom,
+      'email': email,
+      'phone': phone,
+      'password': password,
+      if (photo != null) 'photo': photo,
+    };
+  }
+}
+
 /// Auth Remote DataSource
 abstract class AuthRemoteDataSource {
-  Future<Map<String, dynamic>> login(String identifier, String password);
-  Future<Map<String, dynamic>> register(Map<String, dynamic> data);
+  Future<Map<String, dynamic>> login(
+    String identifier,
+    String password,
+    String otpCode,
+  );
+
+  Future<Map<String, dynamic>> register(RegisterRequest request);
+
+  Future<void> sendOtp(String target, {String? channel});
+
+  Future<bool> verifyOtp(String target, String code);
+
   Future<void> logout(String refreshToken);
+
   Future<PersonModel> getCurrentUser();
+
   Future<Map<String, dynamic>> refreshToken(String refreshToken);
+
   Future<void> forgotPassword(String phone);
+
   Future<void> resetPassword(String target, String otpCode, String newPassword);
+
   Future<void> changePassword(String oldPassword, String newPassword);
 }
 
@@ -22,12 +67,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   AuthRemoteDataSourceImpl(this.dioClient);
 
   @override
-  Future<Map<String, dynamic>> login(String identifier, String password) async {
+  Future<Map<String, dynamic>> login(
+    String identifier,
+    String password,
+    String otpCode,
+  ) async {
     try {
-      final isEmail = identifier.contains('@');
       final response = await dioClient.post(
         ApiConstants.login,
-        data: {'username': identifier, 'password': password},
+        data: {
+          'username': identifier,
+          'password': password,
+          'otpCode': otpCode, // ⚠️ OTP OBLIGATOIRE
+        },
       );
 
       // Le backend retourne: {success, message, data: {token, refreshToken, type, person}}
@@ -53,7 +105,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         }
 
         if (statusCode == 401) {
-          throw Exception('Email/téléphone ou mot de passe incorrect');
+          throw Exception(
+            'Email/téléphone, mot de passe ou code OTP incorrect',
+          );
         }
 
         throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
@@ -81,17 +135,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> register(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> register(RegisterRequest request) async {
     try {
       final response = await dioClient.post(
         ApiConstants.register,
-        data: {
-          'prenom': data['prenom'],
-          'nom': data['nom'],
-          'email': data['email'],
-          'phone': data['phone'],
-          'password': data['password'],
-        },
+        data: request.toJson(),
       );
 
       if (response.data['success'] == true) {
@@ -102,18 +150,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'person': authData['person'],
         };
       } else {
-        // Extraire le message d'erreur du backend
         final errorMessage =
             response.data['message'] ?? 'Erreur d\'inscription';
         throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
       }
     } on DioException catch (e) {
-      // Gérer les différents codes d'erreur HTTP
       if (e.response != null) {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        // Extraire le message d'erreur du backend si disponible
         String errorMessage = 'Erreur d\'inscription';
 
         if (responseData is Map && responseData['message'] != null) {
@@ -122,18 +167,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           errorMessage = responseData;
         }
 
-        // Mapper selon le code HTTP
         switch (statusCode) {
           case 400:
-            // Erreur de validation
             throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
           case 409:
-            // Conflit - utilisateur existe déjà
             throw Exception(
               'Un compte avec cet email ou ce numéro de téléphone existe déjà',
             );
           case 422:
-            // Erreur de validation détaillée
             throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
           case 500:
             throw Exception(
@@ -144,7 +185,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         }
       }
 
-      // Erreur réseau ou timeout
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         throw Exception(
@@ -160,7 +200,93 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       throw Exception('Une erreur s\'est produite. Veuillez réessayer');
     } catch (e) {
-      // Erreur inattendue
+      throw Exception(ErrorMessageMapper.extractFriendlyMessage(e));
+    }
+  }
+
+  @override
+  Future<void> sendOtp(String target, {String? channel}) async {
+    try {
+      final Map<String, dynamic> data = {'target': target};
+
+      if (channel != null && channel.isNotEmpty) {
+        data['channel'] = channel.toUpperCase();
+      }
+
+      final response = await dioClient.post(ApiConstants.sendOtp, data: data);
+
+      if (response.data['success'] != true) {
+        final errorMessage =
+            response.data['message'] ?? 'Erreur lors de l\'envoi du code OTP';
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final responseData = e.response!.data;
+
+        String errorMessage = 'Erreur lors de l\'envoi du code OTP';
+        if (responseData is Map && responseData['message'] != null) {
+          errorMessage = responseData['message'];
+        }
+
+        if (statusCode == 404) {
+          throw Exception('Aucun compte associé à ce numéro ou email');
+        }
+
+        if (statusCode == 429) {
+          throw Exception(
+            'Trop de tentatives. Veuillez patienter quelques minutes',
+          );
+        }
+
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+      }
+
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw Exception('La connexion a pris trop de temps');
+      }
+
+      throw Exception('Erreur de connexion: ${e.message}');
+    } catch (e) {
+      throw Exception(ErrorMessageMapper.extractFriendlyMessage(e));
+    }
+  }
+
+  @override
+  Future<bool> verifyOtp(String target, String code) async {
+    try {
+      final response = await dioClient.post(
+        ApiConstants.verifyOtp,
+        data: {'target': target, 'code': code},
+      );
+
+      if (response.data['success'] == true) {
+        return response.data['data'] ?? true;
+      } else {
+        final errorMessage = response.data['message'] ?? 'Code OTP invalide';
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final responseData = e.response!.data;
+
+        String errorMessage = 'Code OTP invalide ou expiré';
+        if (responseData is Map && responseData['message'] != null) {
+          errorMessage = responseData['message'];
+        }
+
+        if (statusCode == 400) {
+          throw Exception('Code OTP invalide ou expiré');
+        }
+
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+      }
+
+      throw Exception('Erreur de vérification: ${e.message}');
+    } catch (e) {
       throw Exception(ErrorMessageMapper.extractFriendlyMessage(e));
     }
   }
@@ -218,7 +344,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> forgotPassword(String phone) async {
     try {
-      await dioClient.post(ApiConstants.forgotPassword, data: {'phone': phone});
+      final response = await dioClient.post(
+        ApiConstants.forgotPassword,
+        data: {'phone': phone},
+      );
+
+      if (response.data['success'] != true) {
+        final errorMessage =
+            response.data['message'] ?? 'Erreur lors de l\'envoi du code';
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+      }
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         throw Exception('Aucun compte associé à ce numéro');
@@ -234,7 +369,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String newPassword,
   ) async {
     try {
-      await dioClient.post(
+      final response = await dioClient.post(
         ApiConstants.resetPassword,
         data: {
           'target': target,
@@ -242,6 +377,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'newPassword': newPassword,
         },
       );
+
+      if (response.data['success'] != true) {
+        final errorMessage =
+            response.data['message'] ?? 'Erreur lors de la réinitialisation';
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+      }
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         throw Exception('Code OTP invalide ou expiré');
@@ -253,10 +394,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> changePassword(String oldPassword, String newPassword) async {
     try {
-      await dioClient.post(
+      final response = await dioClient.post(
         ApiConstants.changePassword,
         data: {'oldPassword': oldPassword, 'newPassword': newPassword},
       );
+
+      if (response.data['success'] != true) {
+        final errorMessage =
+            response.data['message'] ??
+            'Erreur lors du changement de mot de passe';
+        throw Exception(ErrorMessageMapper.mapErrorMessage(errorMessage));
+      }
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         throw Exception('Ancien mot de passe incorrect');

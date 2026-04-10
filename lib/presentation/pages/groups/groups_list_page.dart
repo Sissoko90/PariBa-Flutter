@@ -184,6 +184,7 @@ class _GroupsListPageState extends State<GroupsListPage> {
             const SizedBox(height: 40),
 
             // Message indiquant d'utiliser le menu dans l'AppBar
+            // Remplacez le Container avec le Row par ceci :
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -195,13 +196,16 @@ class _GroupsListPageState extends State<GroupsListPage> {
                 children: [
                   Icon(Icons.add_circle, color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
-                  Text(
-                    'Utilisez le menu + dans la barre pour créer ou rejoindre',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    // ← Ajoutez Expanded ici
+                    child: Text(
+                      'Utilisez le menu + dans la barre pour créer ou rejoindre',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ],
               ),

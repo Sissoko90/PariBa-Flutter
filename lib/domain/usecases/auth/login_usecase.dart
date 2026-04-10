@@ -12,7 +12,12 @@ class LoginUseCase {
   Future<Either<Failure, AuthResult>> call({
     required String identifier,
     required String password,
+    required String otpCode,
   }) async {
-    return await repository.login(identifier: identifier, password: password);
+    return await repository.login(
+      identifier: identifier,
+      password: password,
+      otpCode: otpCode,
+    );
   }
 }

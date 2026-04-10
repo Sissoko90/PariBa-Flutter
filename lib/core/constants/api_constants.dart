@@ -6,8 +6,8 @@ class ApiConstants {
   /// Base URL for API
   /// Pour Android Emulator, utilisez 10.0.2.2 au lieu de localhost
   /// Pour iOS Simulator, utilisez localhost ou votre IP
-  //static const String baseUrl = 'http://10.10.10.104:8085/api/v1';
-  static const String baseUrl = 'http://192.168.100.57:8085/api/v1';
+  //static const String baseUrl = 'http://10.10.10.104:8090/api/v1';
+  static const String baseUrl = 'http://10.0.2.2:8090/api/v1';
   // Auth Endpoints
   static const String login = '/auth/login';
   static const String register = '/auth/register';
@@ -106,6 +106,11 @@ class ApiConstants {
   // Dashboard Endpoints
   static const String dashboard = '/dashboard';
   static const String dashboardSummary = '/dashboard/summary';
+  static const String subscriptions = '/subscriptions';
+  static const String mySubscription = '/subscriptions/me';
+  static const String subscriptionPlans = '/subscriptions/plans';
+  static const String subscriptionRequests = '/subscriptions/requests';
+  static const String subscriptionFeature = '/subscriptions/feature';
 
   // Timeout
   static const Duration connectionTimeout = Duration(seconds: 30);

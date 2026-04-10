@@ -85,11 +85,28 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
               );
-            } else if (state is Authenticated) {
+            }
+            // 👇 CHANGEMENT ICI : Gérer AuthSuccess au lieu de Authenticated
+            else if (state is AuthSuccess) {
               print(
-                '✅ RegisterPage - Utilisateur authentifié, retour à la racine',
+                '✅ RegisterPage - Inscription réussie, fermeture de la page',
               );
+
               // Afficher un message de succès
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.success,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+
+              // Fermer la page d'inscription pour revenir à la page de login
+              Navigator.of(context).pop();
+            }
+            // Gérer aussi le cas où l'utilisateur serait directement authentifié (rare pour l'inscription)
+            else if (state is Authenticated) {
+              print('✅ RegisterPage - Utilisateur authentifié directement');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('✅ Inscription réussie ! Bienvenue sur PariBa'),
@@ -97,7 +114,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   duration: Duration(seconds: 2),
                 ),
               );
-              // Retourner à la racine (AuthWrapper) qui détectera l'état Authenticated
               Navigator.of(context).popUntil((route) => route.isFirst);
             }
           },

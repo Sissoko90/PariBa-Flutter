@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pariba/data/repositories/subscription_repository.dart';
+import '../../../domain/repositories/subscription_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -26,6 +26,9 @@ import '../../widgets/home_advertisement_section.dart';
 import '../../../data/datasources/remote/advertisement_remote_datasource.dart';
 import '../../../di/injection.dart' as di;
 import '../premium/premiumscreen.dart';
+import 'package:logger/logger.dart';
+
+final _logger = Logger();
 
 /// Improved Dashboard Page with Enhanced UI
 class ImprovedDashboardPage extends StatefulWidget {
@@ -42,10 +45,12 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
   final _paymentService = di.sl<PaymentService>();
   late AnimationController _animationController;
   late List<Animation<double>> _fadeAnimations;
+  late Future<bool> _isPremiumFuture = _isPremiumUser();
 
   @override
   void initState() {
     super.initState();
+    _isPremiumFuture = _isPremiumUser();
     _initializeAnimations();
     _loadInitialData();
     _setupNotificationListener();
@@ -143,15 +148,29 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
         return const GroupsListPage();
       case 2:
         return FutureBuilder<bool>(
-          key: const ValueKey('notifications_page'),
-          future: _isPremiumUser(),
+          key: const ValueKey('premium_page'),
+          future: _isPremiumFuture,
           builder: (context, snapshot) {
-            if (!snapshot.hasData) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(strokeWidth: 2),
+                    SizedBox(height: 12),
+                    Text(
+                      'Vérification...',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
               );
             }
-            final isPremium = snapshot.data!;
+            if (snapshot.hasError) {
+              _logger.d('❌ FutureBuilder error: ${snapshot.error}');
+              return const PremiumScreen(); // Par défaut non-premium si erreur
+            }
+            final isPremium = snapshot.data ?? false;
             return isPremium
                 ? const EnhancedNotificationsPage()
                 : const PremiumScreen();
@@ -165,13 +184,26 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
   }
 
   Future<bool> _isPremiumUser() async {
-    final repository = di.sl<SubscriptionRepository>();
-    final result = await repository.getActiveSubscription();
-
-    return result.fold(
-      (failure) => false,
-      (subscription) => subscription != null && subscription.status == 'ACTIVE',
-    );
+    _logger.d('🔔 _isPremiumUser appelé');
+    try {
+      final repository = di.sl<SubscriptionRepository>();
+      _logger.d('✅ Repository récupéré: $repository');
+      final result = await repository.getMySubscription();
+      _logger.d('📦 Résultat: $result');
+      return result.fold(
+        (failure) {
+          _logger.d('❌ Failure: ${failure.message}');
+          return false;
+        },
+        (sub) {
+          _logger.d('✅ Sub: $sub');
+          return sub != null;
+        },
+      );
+    } catch (e) {
+      _logger.d('💥 Exception: $e');
+      return false;
+    }
   }
 
   Widget _buildDashboard() {

@@ -11,6 +11,7 @@ abstract class AuthRepository {
   Future<Either<Failure, AuthResult>> login({
     required String identifier,
     required String password,
+    required String otpCode,
   });
 
   /// Register new user
@@ -27,7 +28,7 @@ abstract class AuthRepository {
   /// Send OTP code
   Future<Either<Failure, void>> sendOtp({
     required String target,
-    required String type, // phone or email
+    String? channel, // phone or email
   });
 
   /// Verify OTP code

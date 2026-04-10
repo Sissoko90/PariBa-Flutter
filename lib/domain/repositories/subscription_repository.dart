@@ -10,7 +10,7 @@ abstract class SubscriptionRepository {
   Future<Either<Failure, SubscriptionPlanModel?>> getMySubscription();
   Future<Either<Failure, SubscriptionRequestModel>> requestSubscription({
     required String planId,
-    String billingPeriod = 'monthly',
+    String billingPeriod,
     String? notes,
   });
   Future<Either<Failure, List<SubscriptionRequestModel>>> getMyRequests();
