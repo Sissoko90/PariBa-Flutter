@@ -91,10 +91,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
               // Recharger le prochain tour
               context.read<TourBloc>().add(LoadNextTourEvent(_currentGroup.id));
             } else if (state is TourError) {
+              // Afficher un message user-friendly
+              final userMessage = _extractUserFriendlyMessage(state.message);
+              final messageColor = _getColorForMessage(userMessage);
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('❌ Erreur: ${state.message}'),
-                  backgroundColor: AppColors.error,
+                  content: Text(userMessage),
+                  backgroundColor: messageColor,
+                  duration: const Duration(seconds: 4),
                 ),
               );
             }
@@ -762,7 +767,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'Erreur: ${state.message}',
+                    _extractUserFriendlyMessage(state.message),
                     style: const TextStyle(color: AppColors.error),
                   ),
                 )
@@ -1129,6 +1134,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
       const SnackBar(
         content: Text('Génération des tours en cours...'),
         backgroundColor: AppColors.info,
+        duration: Duration(seconds: 2),
       ),
     );
 
@@ -1237,5 +1243,41 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
     Future.delayed(const Duration(seconds: 10), () {
       subscription.cancel();
     });
+  }
+
+  // ===================== MÉTHODES UTILITAIRES =====================
+
+  /// Extraire un message user-friendly à partir d'un message d'erreur
+  String _extractUserFriendlyMessage(String message) {
+    if (message.contains('déjà été générés') ||
+        message.contains('already generated')) {
+      return '✅ Les tours ont déjà été générés pour ce groupe.';
+    }
+    if (message.contains('pas assez de membres') ||
+        message.contains('not enough members')) {
+      return '⚠️ Impossible de générer les tours. Le groupe doit avoir au moins 2 membres.';
+    }
+    if (message.contains('non trouvé') || message.contains('not found')) {
+      return '❌ Groupe introuvable.';
+    }
+    if (message.contains('non autorisé') || message.contains('unauthorized')) {
+      return '🔒 Vous n\'êtes pas autorisé à effectuer cette action.';
+    }
+    if (message.startsWith('✅') ||
+        message.startsWith('⚠️') ||
+        message.startsWith('❌') ||
+        message.startsWith('🔒')) {
+      return message;
+    }
+    return message;
+  }
+
+  /// Obtenir la couleur en fonction du message
+  Color _getColorForMessage(String message) {
+    if (message.startsWith('✅')) return AppColors.success;
+    if (message.startsWith('⚠️')) return AppColors.warning;
+    if (message.startsWith('❌')) return AppColors.error;
+    if (message.startsWith('🔒')) return AppColors.info;
+    return AppColors.error;
   }
 }

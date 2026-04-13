@@ -444,11 +444,6 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
-                    Icons.search,
-                    color: Colors.white,
-                    size: 20,
-                  ),
                 ),
                 onPressed: () => _showSearchDialog(),
               ),

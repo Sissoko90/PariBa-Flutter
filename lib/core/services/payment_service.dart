@@ -12,8 +12,7 @@ class PaymentService {
 
   /// Déclarer un paiement - CORRIGÉ selon votre API
   Future<Map<String, dynamic>> declarePayment({
-    required String
-    groupId, // On garde groupId pour l'interface, mais on va chercher la contribution
+    required String groupId,
     required double amount,
     required String paymentType,
     String? transactionRef,
@@ -25,12 +24,34 @@ class PaymentService {
         return {'success': false, 'message': 'Non authentifié'};
       }
 
-      // IMPORTANT: D'abord, nous devons obtenir la contribution active pour ce groupe et utilisateur
-      print(
-        '📤 PaymentService - Récupération contributions pour groupe: $groupId',
+      // 1. Récupérer l'ID de l'utilisateur connecté
+      print('📤 PaymentService - Récupération profil utilisateur');
+      final profileResponse = await http.get(
+        Uri.parse('$_baseUrl${ApiConstants.myProfile}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
       );
+
+      if (profileResponse.statusCode != 200) {
+        print('❌ Profile response error: ${profileResponse.statusCode}');
+        return {
+          'success': false,
+          'message': 'Impossible de récupérer votre profil',
+        };
+      }
+
+      final profileData = jsonDecode(profileResponse.body);
+      final String personId = profileData['data']['id'];
+      print('📤 PaymentService - ID utilisateur: $personId');
+
+      // 2. Récupérer les contributions en attente du groupe
+      final pendingUrl = '$_baseUrl/contributions/group/$groupId/pending';
+      print('📤 PaymentService - Appel API: $pendingUrl');
+
       final contributionsResponse = await http.get(
-        Uri.parse('$_baseUrl/contributions/group/$groupId/pending'),
+        Uri.parse(pendingUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -40,38 +61,68 @@ class PaymentService {
       print(
         '📥 PaymentService - Réponse contributions: ${contributionsResponse.statusCode}',
       );
-      print(
-        '📥 PaymentService - Body contributions: ${contributionsResponse.body}',
-      );
+      print('📥 PaymentService - Body brut: ${contributionsResponse.body}');
 
       if (contributionsResponse.statusCode != 200) {
         return {
           'success': false,
-          'message': 'Aucune contribution en attente trouvée pour ce groupe',
+          'message': 'Erreur lors du chargement des contributions',
         };
       }
 
       final contributionsData = jsonDecode(contributionsResponse.body);
-      print(
-        '📊 PaymentService - Contributions data: ${contributionsData['data']}',
-      );
 
-      if (contributionsData['success'] != true ||
-          contributionsData['data'] == null ||
-          contributionsData['data'].isEmpty) {
-        print('❌ PaymentService - Aucune contribution trouvée dans la réponse');
+      if (contributionsData['success'] != true) {
         return {
           'success': false,
-          'message': 'Aucune contribution en attente trouvée',
+          'message':
+              contributionsData['message'] ?? 'Erreur chargement contributions',
         };
       }
 
-      // Prendre la première contribution en attente
-      final firstContribution =
-          contributionsData['data'][0] as Map<String, dynamic>;
-      final contributionId = firstContribution['id'] as String;
+      final List<dynamic> contributions = contributionsData['data'] ?? [];
+      print(
+        '📥 PaymentService - Nombre de contributions: ${contributions.length}',
+      );
 
-      // Maintenant déclarer le paiement avec le bon format d'API
+      if (contributions.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Aucune contribution en attente pour ce groupe',
+        };
+      }
+
+      // 3. Trouver la contribution de l'utilisateur connecté
+      // Note: Dans la réponse, le champ s'appelle "member" pas "group"
+      dynamic matchingContribution = null;
+
+      for (var c in contributions) {
+        final member = c['member'];
+        final memberId = member is Map ? member['id'] : null;
+        print('📥 Contribution: ${c['id']}, memberId: $memberId');
+
+        if (memberId == personId) {
+          matchingContribution = c;
+          print('✅ Contribution trouvée pour cet utilisateur: ${c['id']}');
+          break;
+        }
+      }
+
+      if (matchingContribution == null) {
+        print(
+          '❌ Aucune contribution trouvée pour l\'utilisateur $personId dans ce groupe',
+        );
+        return {
+          'success': false,
+          'message':
+              'Vous n\'avez aucune contribution en attente dans ce groupe',
+        };
+      }
+
+      final contributionId = matchingContribution['id'] as String;
+      print('✅ ContributionId sélectionné: $contributionId');
+
+      // 4. Déclarer le paiement
       final body = {
         'contributionId': contributionId,
         'amount': amount,
@@ -81,13 +132,10 @@ class PaymentService {
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       };
 
-      print(
-        '📤 PaymentService - Déclaration paiement pour contribution: $contributionId',
-      );
-      print('📤 PaymentService - Body: $body');
+      print('📤 PaymentService - Déclaration paiement: $body');
 
       final response = await http.post(
-        Uri.parse('$_baseUrl/payments'),
+        Uri.parse('$_baseUrl${ApiConstants.payments}'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -95,7 +143,7 @@ class PaymentService {
         body: jsonEncode(body),
       );
 
-      print('📥 PaymentService - Réponse: ${response.statusCode}');
+      print('📥 PaymentService - Réponse déclaration: ${response.statusCode}');
       print('📥 PaymentService - Body: ${response.body}');
 
       final Map<String, dynamic> data = jsonDecode(response.body);
@@ -112,8 +160,9 @@ class PaymentService {
           'message': data['message'] ?? 'Erreur lors de la déclaration',
         };
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ PaymentService - Erreur: $e');
+      print('❌ StackTrace: $stackTrace');
       return {'success': false, 'message': 'Erreur de connexion: $e'};
     }
   }

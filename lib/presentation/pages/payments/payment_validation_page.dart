@@ -48,6 +48,11 @@ class _PaymentValidationPageState extends State<PaymentValidationPage>
         title: Text('Validation paiements - ${widget.groupName}'),
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white, // texte actif
+          unselectedLabelColor: Colors.white70, // texte inactif
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelStyle: TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
             Tab(text: 'En attente', icon: Icon(Icons.pending_actions)),
             Tab(text: 'Validés', icon: Icon(Icons.check_circle)),

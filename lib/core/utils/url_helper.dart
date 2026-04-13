@@ -1,6 +1,6 @@
 // core/utils/url_helper.dart
 class UrlHelper {
-  static const String baseIp = '10.0.2.2'; // Votre IP
+  static const String baseIp = '192.168.100.57'; // Votre IP
 
   // Votre IP
 

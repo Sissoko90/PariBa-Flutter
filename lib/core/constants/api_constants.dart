@@ -8,7 +8,7 @@ class ApiConstants {
   /// Pour iOS Simulator, utilisez localhost ou votre IP
 
   //static const String baseUrl = 'http://10.10.10.104:8090/api/v1';
-  static const String baseUrl = 'http://10.0.2.2:8090/api/v1';
+  static const String baseUrl = 'http://192.168.100.57:8090/api/v1';
 
   //static const String baseUrl = 'http://10.10.10.104:8090/api/v1';
 
@@ -81,6 +81,8 @@ class ApiConstants {
       '/contributions/tour/$tourId';
   static String contributionsByMember(String personId) =>
       '/contributions/member/$personId';
+  static String pendingContributionsByMember(String personId) =>
+      '/contributions/member/$personId/pending';
   static String pendingContributions(String groupId) =>
       '/contributions/group/$groupId/pending';
 

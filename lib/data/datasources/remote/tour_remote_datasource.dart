@@ -102,12 +102,22 @@ class TourRemoteDataSourceImpl implements TourRemoteDataSource {
       if (response.data['success'] == true) {
         return List<Map<String, dynamic>>.from(response.data['data']);
       } else {
-        throw Exception(
-          response.data['message'] ?? 'Erreur lors de la génération des tours',
+        // 👇 Retourner le message spécifique de l'API
+        throw DioException(
+          requestOptions: RequestOptions(path: ApiConstants.generateTours),
+          response: Response(
+            requestOptions: RequestOptions(path: ApiConstants.generateTours),
+            data: response.data,
+            statusCode: 400,
+          ),
+          type: DioExceptionType.badResponse,
         );
       }
     } on DioException catch (e) {
-      throw Exception('Erreur de génération des tours: ${e.message}');
+      // 👇 Propager l'erreur avec son message
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur de génération des tours: $e');
     }
   }
 }
