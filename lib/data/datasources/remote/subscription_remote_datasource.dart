@@ -73,10 +73,8 @@ class SubscriptionRemoteDataSource {
           canExportPdf: false,
           canExportExcel: false,
           active: data['status'] == 'ACTIVE',
-<<<<<<< HEAD
-=======
+
           isActive: data['status'] == 'ACTIVE',
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
         );
       }
       return null;

@@ -153,30 +153,12 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(strokeWidth: 2),
-                    SizedBox(height: 12),
-                    Text(
-                      'Vérification...',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2),
               );
             }
-<<<<<<< HEAD
-            if (snapshot.hasError) {
-              _logger.d('❌ FutureBuilder error: ${snapshot.error}');
-              return const PremiumScreen(); // Par défaut non-premium si erreur
-            }
-            final isPremium = snapshot.data ?? false;
-=======
             final isPremium = snapshot.data ?? false;
             // Si premium → page "vous êtes déjà abonné"
             // Si pas premium → PremiumScreen (qui gère aussi le pending)
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
             return isPremium
                 ? _buildActiveSubscriptionPage()
                 : const PremiumScreen();
@@ -189,29 +171,6 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
     }
   }
 
-<<<<<<< HEAD
-  Future<bool> _isPremiumUser() async {
-    _logger.d('🔔 _isPremiumUser appelé');
-    try {
-      final repository = di.sl<SubscriptionRepository>();
-      _logger.d('✅ Repository récupéré: $repository');
-      final result = await repository.getMySubscription();
-      _logger.d('📦 Résultat: $result');
-      return result.fold(
-        (failure) {
-          _logger.d('❌ Failure: ${failure.message}');
-          return false;
-        },
-        (sub) {
-          _logger.d('✅ Sub: $sub');
-          return sub != null;
-        },
-      );
-    } catch (e) {
-      _logger.d('💥 Exception: $e');
-      return false;
-    }
-=======
   Widget _buildActiveSubscriptionPage() {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
@@ -355,7 +314,6 @@ class _ImprovedDashboardPageState extends State<ImprovedDashboardPage>
         ),
       ),
     );
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
   }
 
   Widget _premiumBenefit(IconData icon, String text) {

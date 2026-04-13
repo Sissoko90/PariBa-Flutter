@@ -1,15 +1,9 @@
-// lib/presentation/pages/premium_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../di/injection.dart' as di;
 import '../../../domain/repositories/subscription_repository.dart';
 import '../../../data/models/subscription_plan_model.dart';
 import '../../../data/models/subscription_request_model.dart';
-<<<<<<< HEAD
-=======
-import '../../../core/utils/error_message_mapper.dart';
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -30,17 +24,11 @@ class _PremiumScreenState extends State<PremiumScreen>
 
   List<SubscriptionPlanModel> _plans = [];
   SubscriptionPlanModel? _selectedPlan;
-<<<<<<< HEAD
-  String _billingPeriod = 'monthly';
-  bool _isLoading = true;
-  bool _isSubmitting = false;
-=======
   SubscriptionPlanModel? _currentSubscription;
   String _billingPeriod = 'monthly';
   bool _isLoading = true;
   bool _isSubmitting = false;
   bool _hasActiveSubscription = false;
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
   String? _error;
   SubscriptionRequestModel? _pendingRequest;
 
@@ -78,7 +66,6 @@ class _PremiumScreenState extends State<PremiumScreen>
   @override
   void initState() {
     super.initState();
-
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -127,9 +114,47 @@ class _PremiumScreenState extends State<PremiumScreen>
       _isLoading = true;
       _error = null;
     });
-<<<<<<< HEAD
+
     final repository = di.sl<SubscriptionRepository>();
 
+    // 1. Vérifier l'abonnement actif
+    final currentSubResult = await repository.getMySubscription();
+    currentSubResult.fold((failure) => null, (subscription) {
+      if (subscription != null && subscription.active == true) {
+        setState(() {
+          _currentSubscription = subscription;
+          _hasActiveSubscription = true;
+        });
+      }
+    });
+
+    if (_hasActiveSubscription) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // 2. Vérifier demande approuvée (fallback)
+    final requestsResult = await repository.getMyRequests();
+    requestsResult.fold((failure) => null, (requests) {
+      // Demande en attente
+      try {
+        final pending = requests.firstWhere((r) => r.isPending);
+        if (mounted) setState(() => _pendingRequest = pending);
+      } catch (_) {}
+
+      // Demande approuvée mais abonnement pas encore chargé
+      final hasApproved = requests.any((r) => r.isApproved);
+      if (hasApproved && !_hasActiveSubscription) {
+        setState(() => _hasActiveSubscription = true);
+      }
+    });
+
+    if (_hasActiveSubscription) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // 3. Charger les plans
     final plansResult = await repository.getPlans();
     plansResult.fold((failure) => setState(() => _error = failure.message), (
       plans,
@@ -141,77 +166,12 @@ class _PremiumScreenState extends State<PremiumScreen>
       });
     });
 
-    final requestsResult = await repository.getMyRequests();
-    requestsResult.fold((failure) => null, (requests) {
-      SubscriptionRequestModel? pending;
-      try {
-        pending = requests.firstWhere((r) => r.isPending);
-      } catch (_) {}
-      if (pending != null) setState(() => _pendingRequest = pending);
-    });
-
-    setState(() => _isLoading = false);
-=======
-
-    final repository = di.sl<SubscriptionRepository>();
-
-    // Vérifier l'abonnement actuel d'abord
-    final currentSubResult = await repository.getMySubscription();
-    await currentSubResult.fold(
-      (failure) {
-        print('⚠️ Aucun abonnement trouvé: ${failure.message}');
-      },
-      (subscription) async {
-        if (subscription != null && subscription.isActive) {
-          setState(() {
-            _currentSubscription = subscription;
-            _hasActiveSubscription = true;
-          });
-          return;
-        }
-      },
-    );
-
-    // Si déjà abonné, ne pas charger les plans
-    if (_hasActiveSubscription) {
-      setState(() => _isLoading = false);
-      return;
-    }
-
-    // Charger les plans disponibles
-    final plansResult = await repository.getPlans();
-    plansResult.fold(
-      (failure) {
-        setState(
-          () => _error = ErrorMessageMapper.mapErrorMessage(failure.message),
-        );
-      },
-      (plans) {
-        final paidPlans = plans.where((p) => p.type != 'FREE').toList();
-        setState(() {
-          _plans = paidPlans;
-          if (_plans.isNotEmpty) _selectedPlan = _plans.first;
-        });
-      },
-    );
-
-    // Vérifier les demandes en attente
-    final requestsResult = await repository.getMyRequests();
-    requestsResult.fold((failure) => null, (requests) {
-      try {
-        final pending = requests.firstWhere((r) => r.isPending);
-        if (mounted) setState(() => _pendingRequest = pending);
-      } catch (_) {}
-    });
-
     if (mounted) setState(() => _isLoading = false);
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
   }
 
   Future<void> _requestSubscription() async {
     if (_selectedPlan == null) return;
 
-    // Animation bouton press
     await _buttonController.forward();
     await _buttonController.reverse();
     HapticFeedback.mediumImpact();
@@ -228,24 +188,13 @@ class _PremiumScreenState extends State<PremiumScreen>
 
     result.fold(
       (failure) {
-<<<<<<< HEAD
-=======
-        final friendlyMessage = ErrorMessageMapper.mapErrorMessage(
-          failure.message,
-        );
-
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 8),
-<<<<<<< HEAD
                 Expanded(child: Text(failure.message)),
-=======
-                Expanded(child: Text(friendlyMessage)),
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
               ],
             ),
             backgroundColor: Colors.red.shade700,
@@ -253,10 +202,7 @@ class _PremiumScreenState extends State<PremiumScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-<<<<<<< HEAD
-=======
             duration: const Duration(seconds: 4),
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
           ),
         );
       },
@@ -275,12 +221,10 @@ class _PremiumScreenState extends State<PremiumScreen>
       barrierDismissible: false,
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 400),
-      transitionBuilder: (context, anim1, anim2, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: anim1, curve: Curves.elasticOut),
-          child: FadeTransition(opacity: anim1, child: child),
-        );
-      },
+      transitionBuilder: (context, anim1, anim2, child) => ScaleTransition(
+        scale: CurvedAnimation(parent: anim1, curve: Curves.elasticOut),
+        child: FadeTransition(opacity: anim1, child: child),
+      ),
       pageBuilder: (context, _, __) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         elevation: 0,
@@ -301,7 +245,6 @@ class _PremiumScreenState extends State<PremiumScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icône animée
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
                 duration: const Duration(milliseconds: 600),
@@ -417,26 +360,16 @@ class _PremiumScreenState extends State<PremiumScreen>
   }
 
   String _formatPrice(double price) {
-    if (price >= 1000) {
+    if (price >= 1000)
       return '${(price / 1000).toStringAsFixed(price % 1000 == 0 ? 0 : 1)}k';
-    }
     return price.toStringAsFixed(0);
   }
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    if (!_isLoading && _pendingRequest != null) return _buildPendingView();
-=======
-    // Afficher la vue "déjà abonné" si nécessaire
-    if (!_isLoading && _hasActiveSubscription && _currentSubscription != null) {
+    if (!_isLoading && _hasActiveSubscription)
       return _buildAlreadySubscribedView();
-    }
-
-    if (!_isLoading && _pendingRequest != null) {
-      return _buildPendingView();
-    }
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
+    if (!_isLoading && _pendingRequest != null) return _buildPendingView();
 
     return Scaffold(
       body: Container(
@@ -479,7 +412,7 @@ class _PremiumScreenState extends State<PremiumScreen>
           CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
           SizedBox(height: 16),
           Text(
-            'Chargement des plans...',
+            'Chargement...',
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
         ],
@@ -554,7 +487,6 @@ class _PremiumScreenState extends State<PremiumScreen>
       ),
       child: Column(
         children: [
-          // Handle bar
           Container(
             margin: const EdgeInsets.only(top: 12),
             width: 40,
@@ -662,8 +594,8 @@ class _PremiumScreenState extends State<PremiumScreen>
                   ),
                   child: Text(
                     badge,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white,
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -717,9 +649,7 @@ class _PremiumScreenState extends State<PremiumScreen>
           ),
         ),
         const SizedBox(height: 12),
-        ...(_plans.asMap().entries.map(
-          (entry) => _buildPlanCard(entry.value, entry.key),
-        )),
+        ...(_plans.asMap().entries.map((e) => _buildPlanCard(e.value, e.key))),
       ],
     );
   }
@@ -734,7 +664,6 @@ class _PremiumScreenState extends State<PremiumScreen>
         : isBasic
         ? const Color(0xFF1565C0)
         : const Color(0xFF2E7D32);
-
     final List<Color> gradientColors = isPremium
         ? [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)]
         : isBasic
@@ -769,7 +698,6 @@ class _PremiumScreenState extends State<PremiumScreen>
         ),
         child: Stack(
           children: [
-            // Badge recommandé
             if (isPremium)
               Positioned(
                 top: 0,
@@ -809,12 +737,10 @@ class _PremiumScreenState extends State<PremiumScreen>
                   ),
                 ),
               ),
-
             Padding(
               padding: EdgeInsets.fromLTRB(20, isPremium ? 36 : 20, 20, 20),
               child: Row(
                 children: [
-                  // Icône plan
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     width: 52,
@@ -846,8 +772,6 @@ class _PremiumScreenState extends State<PremiumScreen>
                     ),
                   ),
                   const SizedBox(width: 16),
-
-                  // Infos plan
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -896,8 +820,6 @@ class _PremiumScreenState extends State<PremiumScreen>
                       ],
                     ),
                   ),
-
-                  // Prix + sélection
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -1098,7 +1020,7 @@ class _PremiumScreenState extends State<PremiumScreen>
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Text(
-                'Plan sélectionné : ${_selectedPlan!.name} · ${_formatPrice(_getPrice(_selectedPlan!))} FCFA/${_billingPeriod == 'annual' ? 'an' : 'mois'}',
+                'Plan : ${_selectedPlan!.name} · ${_formatPrice(_getPrice(_selectedPlan!))} FCFA/${_billingPeriod == 'annual' ? 'an' : 'mois'}',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 textAlign: TextAlign.center,
               ),
@@ -1112,92 +1034,89 @@ class _PremiumScreenState extends State<PremiumScreen>
               onTap: _isSubmitting ? null : _requestSubscription,
               child: AnimatedBuilder(
                 animation: _shimmerAnimation,
-                builder: (context, child) {
-                  return Container(
-                    width: double.infinity,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF1B5E20),
-                          Color(0xFF2E7D32),
-                          Color(0xFF43A047),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF2E7D32).withOpacity(0.4),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
+                builder: (context, child) => Container(
+                  width: double.infinity,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF1B5E20),
+                        Color(0xFF2E7D32),
+                        Color(0xFF43A047),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Stack(
-                        children: [
-                          // Shimmer
-                          if (!_isSubmitting)
-                            Positioned.fill(
-                              child: AnimatedBuilder(
-                                animation: _shimmerAnimation,
-                                builder: (context, _) => Transform.translate(
-                                  offset: Offset(
-                                    _shimmerAnimation.value * 300,
-                                    0,
-                                  ),
-                                  child: Container(
-                                    width: 60,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.transparent,
-                                          Colors.white.withOpacity(0.15),
-                                          Colors.transparent,
-                                        ],
-                                      ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2E7D32).withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Stack(
+                      children: [
+                        if (!_isSubmitting)
+                          Positioned.fill(
+                            child: AnimatedBuilder(
+                              animation: _shimmerAnimation,
+                              builder: (context, _) => Transform.translate(
+                                offset: Offset(
+                                  _shimmerAnimation.value * 300,
+                                  0,
+                                ),
+                                child: Container(
+                                  width: 60,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.white.withOpacity(0.15),
+                                        Colors.transparent,
+                                      ],
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          Center(
-                            child: _isSubmitting
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.workspace_premium,
-                                        color: Colors.amber,
-                                        size: 22,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Text(
-                                        'Devenir Premium',
-                                        style: TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                           ),
-                        ],
-                      ),
+                        Center(
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.workspace_premium,
+                                      color: Colors.amber,
+                                      size: 22,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Devenir Premium',
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ),
@@ -1260,7 +1179,7 @@ class _PremiumScreenState extends State<PremiumScreen>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Votre demande pour le plan ${_pendingRequest!.planName} est en attente de validation par un administrateur.',
+                  'Votre demande pour le plan ${_pendingRequest!.planName} est en attente de validation.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey.shade600,
@@ -1304,25 +1223,12 @@ class _PremiumScreenState extends State<PremiumScreen>
                     );
                     if (!mounted) return;
                     result.fold(
-<<<<<<< HEAD
                       (f) => ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(f.message),
                           backgroundColor: Colors.red,
                         ),
                       ),
-=======
-                      (f) {
-                        final friendlyMessage =
-                            ErrorMessageMapper.mapErrorMessage(f.message);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(friendlyMessage),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      },
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
                       (_) {
                         setState(() => _pendingRequest = null);
                         _loadData();
@@ -1356,34 +1262,6 @@ class _PremiumScreenState extends State<PremiumScreen>
     );
   }
 
-<<<<<<< HEAD
-  Widget _buildErrorView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.white54),
-          const SizedBox(height: 16),
-          Text(
-            _error!,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: _loadData,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Réessayer'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF2E7D32),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
-=======
   Widget _buildAlreadySubscribedView() {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
@@ -1434,18 +1312,19 @@ class _PremiumScreenState extends State<PremiumScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'Vous bénéficiez actuellement du plan ${_currentSubscription!.name}.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF2E7D32),
-                    fontWeight: FontWeight.w600,
+                if (_currentSubscription != null)
+                  Text(
+                    'Plan actif : ${_currentSubscription!.name}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF2E7D32),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 8),
                 Text(
-                  'Votre abonnement est actif. Vous pourrez changer de plan à son expiration.',
+                  'Votre abonnement est actif. Profitez de toutes les fonctionnalités exclusives.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey.shade600,
@@ -1454,30 +1333,73 @@ class _PremiumScreenState extends State<PremiumScreen>
                   ),
                 ),
                 const SizedBox(height: 32),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('Retour'),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(
-                      color: Color(0xFF2E7D32),
-                      width: 1.5,
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF2E7D32).withOpacity(0.2),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 14,
-                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _benefitRow(
+                        Icons.picture_as_pdf_rounded,
+                        'Export PDF & Excel',
+                      ),
+                      const Divider(height: 16, color: Color(0xFFB2DFDB)),
+                      _benefitRow(
+                        Icons.group_work_rounded,
+                        'Tontines illimitées',
+                      ),
+                      const Divider(height: 16, color: Color(0xFFB2DFDB)),
+                      _benefitRow(Icons.stars_rounded, 'Badge Premium actif'),
+                      const Divider(height: 16, color: Color(0xFFB2DFDB)),
+                      _benefitRow(
+                        Icons.people_alt_rounded,
+                        'Gestion multi-compte',
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ),
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
       ),
+    );
+  }
+
+  Widget _benefitRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32).withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: const Color(0xFF2E7D32), size: 17),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1B5E20),
+            ),
+          ),
+        ),
+        const Icon(
+          Icons.check_circle_rounded,
+          color: Color(0xFF2E7D32),
+          size: 17,
+        ),
+      ],
     );
   }
 
@@ -1518,10 +1440,6 @@ class _PremiumFeature {
   final String description;
   final Color color;
   final Color bgColor;
-<<<<<<< HEAD
-=======
-
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
   const _PremiumFeature({
     required this.icon,
     required this.title,

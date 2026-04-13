@@ -1,10 +1,8 @@
 // core/utils/url_helper.dart
 class UrlHelper {
-<<<<<<< HEAD
   static const String baseIp = '10.0.2.2'; // Votre IP
-=======
-  static const String baseIp = '192.168.100.198'; // Votre IP
->>>>>>> f6bc8a5 (Sauvegarde avant pull)
+
+  // Votre IP
 
   static String fixPhotoUrl(String? url) {
     if (url == null || url.isEmpty) return '';
