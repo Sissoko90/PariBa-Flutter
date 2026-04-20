@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/services/payment_service.dart';
 import '../../../domain/entities/payment.dart';
+import '../../../domain/entities/payment_history_item.dart';
 import '../../../data/datasources/remote/payment_remote_datasource.dart';
 import '../../../data/models/payment_history_model.dart';
 import 'payment_event.dart';
@@ -22,7 +23,35 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     on<LoadGroupPaymentsEvent>(_onLoadGroupPayments);
     on<LoadPendingPaymentsEvent>(_onLoadPendingPayments);
     on<LoadMyPaymentsEvent>(_onLoadMyPayments);
-    on<LoadPaymentHistoryEvent>(_onLoadPaymentHistory);
+    // Dans payment_bloc.dart, dans le handler de LoadPaymentHistoryEvent :
+    on<LoadPaymentHistoryEvent>((event, emit) async {
+      emit(PaymentsLoading());
+      try {
+        // ← Changer getGroupPayments par getPaymentHistory
+        final result = await _paymentService.getPaymentHistory(event.groupId);
+
+        print('📊 PaymentBloc - Résultat historique: ${result['success']}');
+        print('📊 PaymentBloc - Data: ${result['data']}');
+
+        if (result['success'] == true) {
+          final List<dynamic> data = result['data'] ?? [];
+          if (data.isEmpty) {
+            emit(PaymentsEmpty('Aucun historique de paiement'));
+          } else {
+            // PaymentHistoryLoaded attend des objets différents de PaymentHistoryResponse
+            emit(
+              PaymentHistoryLoaded(
+                data.map((json) => PaymentHistoryItem.fromJson(json)).toList(),
+              ),
+            );
+          }
+        } else {
+          emit(PaymentError(result['message'] ?? 'Erreur'));
+        }
+      } catch (e) {
+        emit(PaymentError('Erreur: $e'));
+      }
+    });
   }
 
   /// Gérer la déclaration d'un paiement
@@ -245,29 +274,38 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
   }
 
   /// Charger l'historique des paiements d'un groupe
+  // Dans payment_bloc.dart - CORRIGÉ
+
+  /// Charger l'historique des paiements d'un groupe
   Future<void> _onLoadPaymentHistory(
     LoadPaymentHistoryEvent event,
     Emitter<PaymentState> emit,
   ) async {
-    if (_paymentRemoteDataSource == null) {
-      emit(PaymentError('DataSource non disponible'));
-      return;
-    }
-
     emit(PaymentsLoading());
 
     try {
-      final historyData = await _paymentRemoteDataSource.getPaymentHistory(
-        event.groupId,
-      );
-      final history = historyData
-          .map((data) => PaymentHistoryModel.fromJson(data))
-          .toList();
+      // Utiliser PaymentService au lieu de PaymentRemoteDataSource
+      final result = await _paymentService.getPaymentHistory(event.groupId);
 
-      if (history.isEmpty) {
-        emit(PaymentsEmpty('Aucun historique de paiement'));
+      print('📊 PaymentBloc - Résultat historique: ${result['success']}');
+      print('📊 PaymentBloc - Data: ${result['data']}');
+
+      if (result['success'] == true) {
+        final List<dynamic> data = result['data'] ?? [];
+        if (data.isEmpty) {
+          emit(PaymentsEmpty('Aucun historique de paiement'));
+        } else {
+          // Convertir directement en PaymentHistoryItem
+          final history = data
+              .map(
+                (json) =>
+                    PaymentHistoryItem.fromJson(json as Map<String, dynamic>),
+              )
+              .toList();
+          emit(PaymentHistoryLoaded(history));
+        }
       } else {
-        emit(PaymentHistoryLoaded(history));
+        emit(PaymentError(result['message'] ?? 'Erreur de chargement'));
       }
     } catch (e) {
       print('❌ PaymentBloc - Erreur chargement historique: $e');

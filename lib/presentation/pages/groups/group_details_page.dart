@@ -852,33 +852,47 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                   ),
                 )
               else if (state is PaymentHistoryLoaded)
-                ...state.history.take(3).map((payment) {
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.success.withOpacity(0.1),
-                      child: const Icon(
-                        Icons.check_circle,
-                        color: AppColors.success,
-                      ),
-                    ),
-                    title: Text(
-                      (payment.isPayout ?? false)
-                          ? 'Paiement versé'
-                          : 'Paiement reçu',
-                    ),
-                    subtitle: Text(
-                      '${payment.tourNumber} - ${payment.formattedDate}',
-                    ),
-                    trailing: Text(
-                      CurrencyFormatter.format(payment.amount),
-                      style: const TextStyle(
-                        color: AppColors.success,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  );
-                })
+                state.history.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text(
+                          'Aucun historique',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      )
+                    : Column(
+                        children: state.history.take(3).map((payment) {
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.success.withOpacity(
+                                0.1,
+                              ),
+                              child: Icon(
+                                payment.isPayout
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward,
+                                color: AppColors.success,
+                              ),
+                            ),
+                            title: Text(
+                              payment.isPayout
+                                  ? 'Versement reçu'
+                                  : 'Cotisation payée',
+                            ),
+                            subtitle: Text(
+                              '${payment.tourNumber ?? ''} - ${payment.formattedDate ?? payment.paymentDate ?? ''}',
+                            ),
+                            trailing: Text(
+                              CurrencyFormatter.format(payment.amount),
+                              style: const TextStyle(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      )
               else
                 const Padding(
                   padding: EdgeInsets.all(16.0),

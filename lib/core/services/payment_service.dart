@@ -554,4 +554,52 @@ class PaymentService {
       return 0;
     }
   }
+
+  /// Obtenir l'historique des paiements personnels dans un groupe
+  Future<Map<String, dynamic>> getPaymentHistory(String groupId) async {
+    try {
+      final token = await _authService.getAccessToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Non authentifié', 'data': []};
+      }
+
+      print(
+        '📤 PaymentService - Chargement historique paiements groupe: $groupId',
+      );
+
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/payments/history/group/$groupId'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw Exception('TIMEOUT'),
+          );
+
+      print('📥 PaymentService - Réponse historique: ${response.statusCode}');
+      print('📥 PaymentService - Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? 'Historique chargé',
+          'data': data['data'] ?? [],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Erreur ${response.statusCode}',
+          'data': [],
+        };
+      }
+    } catch (e) {
+      print('❌ PaymentService - Erreur historique: $e');
+      return {'success': false, 'message': 'Erreur de connexion', 'data': []};
+    }
+  }
 }

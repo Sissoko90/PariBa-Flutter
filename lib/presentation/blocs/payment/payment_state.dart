@@ -3,6 +3,7 @@
 import 'package:equatable/equatable.dart';
 import '../../../domain/entities/payment.dart';
 import '../../../data/models/payment_history_model.dart';
+import '../../../domain/entities/payment_history_item.dart';
 
 /// États pour le BLoC de paiement
 abstract class PaymentState extends Equatable {
@@ -85,10 +86,6 @@ class PaymentsEmpty extends PaymentState {
 
 /// État de l'historique des paiements chargé
 class PaymentHistoryLoaded extends PaymentState {
-  final List<PaymentHistoryModel> history;
-
+  final List<PaymentHistoryItem> history;
   const PaymentHistoryLoaded(this.history);
-
-  @override
-  List<Object?> get props => [history];
 }
